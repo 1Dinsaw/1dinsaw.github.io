@@ -1,9 +1,13 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
+if (!canvas || !ctx) {
+  console.error("Canvas or context is missing!");
+}
+
 // Set canvas size
-canvas.width = 1200; // Adjusted for larger map
-canvas.height = 900;
+canvas.width = 800;
+canvas.height = 600;
 
 // Game state
 let currentWave = 1;
@@ -24,13 +28,13 @@ const dinsaw = {
   weapon: "sword", // Default weapon
 };
 
+// Available weapons
+const weapons = ["sword", "bow", "magic"];
+let currentWeaponIndex = weapons.indexOf(dinsaw.weapon); // Initialize starting weapon index
+
 // Enemy properties
 const enemies = [];
 const enemySize = 30;
-
-// Wall properties
-const walls = [];
-const wallHP = 25; // Wall HP
 
 // Input tracking
 const keys = {};
@@ -44,26 +48,33 @@ document.addEventListener("keydown", (event) => {
     attack();
     setTimeout(() => (dinsaw.isAttacking = false), 500); // Cooldown
   }
-
-  // Building walls with Left Ctrl
-  if (event.key === "Control" && !keys["Control"]) {
-    keys["Control"] = true;
-    walls.push({
-      x: dinsaw.x - 25, // Place wall in front of the player
-      y: dinsaw.y - 25,
-      width: 50,
-      height: 50,
-      hp: wallHP,
-    });
-  }
 });
 
 document.addEventListener("keyup", (event) => {
   keys[event.key] = false;
 });
 
+// Add this event listener to handle mouse wheel scrolling for weapon change
+document.addEventListener("wheel", (event) => {
+  if (event.deltaY < 0) {
+    // Scroll up: go to previous weapon
+    cycleWeapon(-1);
+  } else if (event.deltaY > 0) {
+    // Scroll down: go to next weapon
+    cycleWeapon(1);
+  }
+  console.log("Current Weapon: ", dinsaw.weapon); // Debugging
+});
+
+// Function to cycle through the weapons
+function cycleWeapon(direction) {
+  currentWeaponIndex = (currentWeaponIndex + direction + weapons.length) % weapons.length;
+  dinsaw.weapon = weapons[currentWeaponIndex];
+}
+
 // Spawn a wave of enemies
 function spawnWave(waveCount) {
+  console.log(`Spawning ${waveCount} enemies`); // Debugging
   for (let i = 0; i < waveCount; i++) {
     enemies.push({
       x: Math.random() * (canvas.width - enemySize),
@@ -91,6 +102,7 @@ function isColliding(obj1, obj2) {
 function attack() {
   enemies.forEach((enemy, index) => {
     if (isColliding(dinsaw, enemy)) {
+      console.log("Attack hit!", enemy); // Debugging
       let damage = 10; // Default sword damage
       if (dinsaw.weapon === "bow") damage = 7;
       if (dinsaw.weapon === "magic") damage = 5;
@@ -117,7 +129,6 @@ function attack() {
 
 // Draw arena with grid and decorations
 function drawArena() {
-  // Draw the grid
   ctx.fillStyle = "#1e1e1e"; // Grid background color
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -139,24 +150,16 @@ function drawArena() {
     ctx.stroke();
   }
 
-  // Add ground border
-  ctx.strokeStyle = "#4caf50"; // Bright green border
+  ctx.fillStyle = "#444";
+  ctx.fillRect(100, 100, 50, 50); // Example decoration
+  ctx.fillStyle = "#888";
+  ctx.beginPath();
+  ctx.arc(700, 500, 30, 0, Math.PI * 2); // Example circle
+  ctx.fill();
+
+  ctx.strokeStyle = "#4caf50"; // Green border
   ctx.lineWidth = 5;
   ctx.strokeRect(0, 0, canvas.width, canvas.height);
-}
-
-// Draw walls
-function drawWalls() {
-  walls.forEach((wall) => {
-    ctx.fillStyle = "#8B4513"; // Brown color for walls
-    ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
-
-    // Draw wall HP
-    ctx.fillStyle = "black";
-    ctx.fillRect(wall.x, wall.y - 5, wall.width, 5); // Black bar
-    ctx.fillStyle = "#ff0000"; // Red bar for HP
-    ctx.fillRect(wall.x, wall.y - 5, (wall.hp / wallHP) * wall.width, 5); // HP
-  });
 }
 
 // Show ability choices
@@ -211,17 +214,14 @@ function startNextWave() {
 
 // Game Loop
 function update() {
-  // Movement logic
   if (keys["ArrowUp"]) dinsaw.y -= dinsaw.speed;
   if (keys["ArrowDown"]) dinsaw.y += dinsaw.speed;
   if (keys["ArrowLeft"]) dinsaw.x -= dinsaw.speed;
   if (keys["ArrowRight"]) dinsaw.x += dinsaw.speed;
 
-  // Boundaries
   dinsaw.x = Math.max(0, Math.min(canvas.width - dinsaw.width, dinsaw.x));
   dinsaw.y = Math.max(0, Math.min(canvas.height - dinsaw.height, dinsaw.y));
 
-  // Enemy movement
   enemies.forEach((enemy) => {
     const dx = dinsaw.x - enemy.x;
     const dy = dinsaw.y - enemy.y;
@@ -232,61 +232,42 @@ function update() {
       enemy.y += (dy / dist) * enemy.speed;
     }
 
-    // Check if enemy collides with the player
     if (isColliding(enemy, dinsaw)) {
       dinsaw.health -= 1;
     }
   });
 
-  // End of wave
   if (enemies.length === 0 && !abilityChoiceShown) {
     waveInProgress = false;
     showAbilityChoices();
   }
-
-  // Check wall HP and destroy if needed
-  walls.forEach((wall, index) => {
-    if (wall.hp <= 0) {
-      walls.splice(index, 1); // Remove destroyed wall
-    }
-  });
 }
 
 function draw() {
-  // Draw arena first
   drawArena();
 
-  // Draw walls
-  drawWalls();
-
-  // Draw player
   ctx.fillStyle = dinsaw.color;
   ctx.fillRect(dinsaw.x, dinsaw.y, dinsaw.width, dinsaw.height);
 
-  // Draw enemies
   enemies.forEach((enemy) => {
     ctx.fillStyle = enemy.color;
     ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+    ctx.fillStyle = "black";
+    ctx.fillRect(enemy.x, enemy.y - 10, enemy.width, 5);
+    ctx.fillStyle = "red";
+    ctx.fillRect(enemy.x, enemy.y - 10, (enemy.width * enemy.health) / 20, 5);
   });
 
-  // Update HUD
   document.getElementById("health").textContent = Math.max(dinsaw.health, 0);
   document.getElementById("xp").textContent = dinsaw.xp;
+  document.getElementById("wave").textContent = `Wave: ${currentWave}`;
 }
 
-// Main game loop
 function gameLoop() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
   update();
   draw();
-
-  if (dinsaw.health > 0) {
-    requestAnimationFrame(gameLoop);
-  } else {
-    alert("Game Over!");
-  }
+  requestAnimationFrame(gameLoop);
 }
 
-// Initialize game
 spawnWave(3); // Initial wave
 gameLoop();
