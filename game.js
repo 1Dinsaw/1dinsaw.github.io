@@ -6,8 +6,8 @@ if (!canvas || !ctx) {
 }
 
 // Set canvas size
-canvas.width = 800;
-canvas.height = 600;
+canvas.width = 900;
+canvas.height = 700;
 
 // Game state
 let currentWave = 1;
@@ -68,6 +68,7 @@ document.addEventListener("wheel", (event) => {
 
 // Function to cycle through the weapons
 function cycleWeapon(direction) {
+  if (weapons.length === 0) return; // Prevent cycling if no weapons are available
   currentWeaponIndex = (currentWeaponIndex + direction + weapons.length) % weapons.length;
   dinsaw.weapon = weapons[currentWeaponIndex];
 }
@@ -208,7 +209,7 @@ function startNextWave() {
   abilityChoiceShown = false;
   document.getElementById("choice-container").remove();
   currentWave++;
-  spawnWave(currentWave + 2); // More enemies with each wave
+  spawnWave(currentWave); // Spawn enemies based on the current wave count
   waveInProgress = true;
 }
 
@@ -251,11 +252,11 @@ function draw() {
 
   enemies.forEach((enemy) => {
     ctx.fillStyle = enemy.color;
-    ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
     ctx.fillStyle = "black";
     ctx.fillRect(enemy.x, enemy.y - 10, enemy.width, 5);
     ctx.fillStyle = "red";
-    ctx.fillRect(enemy.x, enemy.y - 10, (enemy.width * enemy.health) / 20, 5);
+    ctx.fillRect(enemy.x, enemy.y - 10, (enemy.width * enemy.health) / 20, 5); // Ensure this reflects current health
+
   });
 
   document.getElementById("health").textContent = Math.max(dinsaw.health, 0);
