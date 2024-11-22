@@ -2,8 +2,8 @@ const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
 // Set canvas size
-canvas.width = 800;
-canvas.height = 600;
+canvas.width = 1200; // Adjusted for larger map
+canvas.height = 900;
 
 // Game state
 let currentWave = 1;
@@ -28,6 +28,10 @@ const dinsaw = {
 const enemies = [];
 const enemySize = 30;
 
+// Wall properties
+const walls = [];
+const wallHP = 25; // Wall HP
+
 // Input tracking
 const keys = {};
 
@@ -39,6 +43,18 @@ document.addEventListener("keydown", (event) => {
     dinsaw.isAttacking = true;
     attack();
     setTimeout(() => (dinsaw.isAttacking = false), 500); // Cooldown
+  }
+
+  // Building walls with Left Ctrl
+  if (event.key === "Control" && !keys["Control"]) {
+    keys["Control"] = true;
+    walls.push({
+      x: dinsaw.x - 25, // Place wall in front of the player
+      y: dinsaw.y - 25,
+      width: 50,
+      height: 50,
+      hp: wallHP,
+    });
   }
 });
 
@@ -123,18 +139,24 @@ function drawArena() {
     ctx.stroke();
   }
 
-  // Add some decorations
-  ctx.fillStyle = "#444";
-  ctx.fillRect(100, 100, 50, 50); // Example decoration: stone block
-  ctx.fillStyle = "#888";
-  ctx.beginPath();
-  ctx.arc(700, 500, 30, 0, Math.PI * 2); // Example: random circle
-  ctx.fill();
-
   // Add ground border
   ctx.strokeStyle = "#4caf50"; // Bright green border
   ctx.lineWidth = 5;
   ctx.strokeRect(0, 0, canvas.width, canvas.height);
+}
+
+// Draw walls
+function drawWalls() {
+  walls.forEach((wall) => {
+    ctx.fillStyle = "#8B4513"; // Brown color for walls
+    ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+
+    // Draw wall HP
+    ctx.fillStyle = "black";
+    ctx.fillRect(wall.x, wall.y - 5, wall.width, 5); // Black bar
+    ctx.fillStyle = "#ff0000"; // Red bar for HP
+    ctx.fillRect(wall.x, wall.y - 5, (wall.hp / wallHP) * wall.width, 5); // HP
+  });
 }
 
 // Show ability choices
@@ -221,11 +243,21 @@ function update() {
     waveInProgress = false;
     showAbilityChoices();
   }
+
+  // Check wall HP and destroy if needed
+  walls.forEach((wall, index) => {
+    if (wall.hp <= 0) {
+      walls.splice(index, 1); // Remove destroyed wall
+    }
+  });
 }
 
 function draw() {
   // Draw arena first
   drawArena();
+
+  // Draw walls
+  drawWalls();
 
   // Draw player
   ctx.fillStyle = dinsaw.color;
