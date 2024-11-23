@@ -16,7 +16,7 @@ const dinsaw = {
   y: 100,
   width: 30,
   height: 50,
-  color: "lime",
+  color: "blue",
   speed: 10,
   health: 100,
   xp: 0,
