@@ -12,14 +12,14 @@ let abilityChoiceShown = false;
 
 // Character properties
 const dinsaw = {
-  x: 100,
-  y: 100,
-  width: 30,
-  height: 50,
-  color: "blue",
-  speed: 10,
-  health: 100,
-  xp: 0,
+  x: 100, // Starting X position
+  y: 100, // Starting Y position
+  width: 30, // Player width
+  height: 50, // Player height
+  color: "lime", // Color for visibility
+  speed: 10, // Player speed
+  health: 100, // Player health
+  xp: 0, // Player XP
   isAttacking: false,
   weapon: "sword", // Default weapon
 };
