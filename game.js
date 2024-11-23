@@ -1,139 +1,113 @@
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
+const boardSize = 10;
+const board = [];
+const playerUnits = [];
+const enemyUnits = [];
+const bases = [];
+let selectedUnit = null;
 
-// Set canvas size
-canvas.width = 800;
-canvas.height = 600;
-
-// Game state
-let currentWave = 1;
-let waveInProgress = true;
-let abilityChoiceShown = false;
-
-// Character properties
-const dinsaw = {
-  x: 100, // Starting X position
-  y: 100, // Starting Y position
-  width: 30, // Player width
-  height: 50, // Player height
-  color: "lime", // Color for visibility
-  speed: 10, // Player speed
-  health: 100, // Player health
-  xp: 0, // Player XP
-  isAttacking: false,
-  weapon: "sword", // Default weapon
-};
-
-// Available weapons
-const weapons = ["sword", "bow", "magic"];
-let currentWeaponIndex = weapons.indexOf(dinsaw.weapon); // Initialize starting weapon index
-
-// Enemy properties
-const enemies = [];
-const enemySize = 30;
-
-// Input tracking
-const keys = {};
-
-document.addEventListener("keydown", (event) => {
-  keys[event.key] = true;
-});
-
-document.addEventListener("keyup", (event) => {
-  keys[event.key] = false;
-});
-
-// Update player's position based on key states
-function update() {
-  if (keys["ArrowUp"]) dinsaw.y -= dinsaw.speed;
-  if (keys["ArrowDown"]) dinsaw.y += dinsaw.speed;
-  if (keys["ArrowLeft"]) dinsaw.x -= dinsaw.speed;
-  if (keys["ArrowRight"]) dinsaw.x += dinsaw.speed;
-
-  // Restrict movement within canvas boundaries
-  dinsaw.x = Math.max(0, Math.min(canvas.width - dinsaw.width, dinsaw.x));
-  dinsaw.y = Math.max(0, Math.min(canvas.height - dinsaw.height, dinsaw.y));
-
-  // Update enemies' positions
-  enemies.forEach((enemy) => {
-    const dx = dinsaw.x - enemy.x;
-    const dy = dinsaw.y - enemy.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-
-    if (dist > 0) {
-      enemy.x += (dx / dist) * enemy.speed;
-      enemy.y += (dy / dist) * enemy.speed;
+// Initialize the game board
+const gameBoard = document.getElementById('game-board');
+for (let y = 0; y < boardSize; y++) {
+    for (let x = 0; x < boardSize; x++) {
+        const tile = document.createElement('div');
+        tile.className = 'tile';
+        tile.dataset.x = x;
+        tile.dataset.y = y;
+        tile.addEventListener('click', () => handleTileClick(x, y));
+        gameBoard.appendChild(tile);
+        board.push({ x, y, unit: null, base: null });
     }
+}
 
-    if (isColliding(enemy, dinsaw)) {
-      dinsaw.health -= 0.5; // Reduce health if collision with enemy
+// Add a base
+function addBase(x, y, owner) {
+    const baseTile = getTile(x, y);
+    baseTile.base = owner;
+    const baseElement = document.createElement('div');
+    baseElement.className = 'base';
+    baseTile.element.appendChild(baseElement);
+    bases.push({ x, y, owner });
+}
+
+// Add a unit
+function addUnit(x, y, owner) {
+    const unit = { x, y, owner, hp: 20 };
+    const unitTile = getTile(x, y);
+    const unitElement = document.createElement('div');
+    unitElement.className = `unit ${owner === 'enemy' ? 'enemy' : ''}`;
+    unitTile.unit = unit;
+    unitTile.element.appendChild(unitElement);
+    (owner === 'player' ? playerUnits : enemyUnits).push(unit);
+}
+
+// Get tile by coordinates
+function getTile(x, y) {
+    return board.find(tile => tile.x === x && tile.y === y);
+}
+
+// Handle tile clicks
+function handleTileClick(x, y) {
+    const tile = getTile(x, y);
+    if (selectedUnit) {
+        moveUnit(selectedUnit, x, y);
+        selectedUnit = null;
+    } else if (tile.unit && tile.unit.owner === 'player') {
+        selectedUnit = tile.unit;
     }
-  });
-
-  if (enemies.length === 0 && !abilityChoiceShown) {
-    waveInProgress = false;
-    showAbilityChoices();
-  }
 }
 
-// Draw the equipped weapon
-function drawWeapon() {
-  const weaponOffset = { x: dinsaw.width / 2, y: dinsaw.height / 2 };
+// Move a unit
+function moveUnit(unit, x, y) {
+    const oldTile = getTile(unit.x, unit.y);
+    const newTile = getTile(x, y);
 
-  ctx.save();
-  ctx.translate(dinsaw.x + weaponOffset.x, dinsaw.y + weaponOffset.y);
+    // Check for combat
+    if (newTile.unit) {
+        if (newTile.unit.owner !== unit.owner) {
+            resolveCombat(unit, newTile.unit, unit.x - x, unit.y - y);
+        }
+    } else {
+        oldTile.unit = null;
+        newTile.unit = unit;
+        unit.x = x;
+        unit.y = y;
 
-  if (dinsaw.weapon === "sword") {
-    ctx.fillStyle = "gray";
-    ctx.fillRect(-5, -20, 10, 40); // Sword blade
-    ctx.fillStyle = "brown";
-    ctx.fillRect(-10, 15, 20, 5); // Sword hilt
-  } else if (dinsaw.weapon === "bow") {
-    ctx.strokeStyle = "brown";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(0, 0, 20, Math.PI / 4, (3 * Math.PI) / 4); // Bow arc
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(-15, -15);
-    ctx.lineTo(15, 15); // Bow string
-    ctx.stroke();
-  } else if (dinsaw.weapon === "magic") {
-    ctx.fillStyle = "blue";
-    ctx.beginPath();
-    ctx.arc(0, 0, 10, 0, Math.PI * 2); // Magic orb
-    ctx.fill();
-  }
-
-  ctx.restore();
+        // Update DOM
+        const unitElement = oldTile.element.querySelector('.unit');
+        oldTile.element.removeChild(unitElement);
+        newTile.element.appendChild(unitElement);
+    }
 }
 
-// Function to draw everything
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas
-
-  // Draw player
-  ctx.fillStyle = dinsaw.color;
-  ctx.fillRect(dinsaw.x, dinsaw.y, dinsaw.width, dinsaw.height);
-
-  // Draw equipped weapon
-  drawWeapon();
-
-  // Draw enemies
-  enemies.forEach((enemy) => {
-    ctx.fillStyle = enemy.color;
-    ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
-  });
-
-  document.getElementById("health").textContent = Math.max(dinsaw.health, 0);
-  document.getElementById("xp").textContent = dinsaw.xp;
-  document.getElementById("wave").textContent = `Wave: ${currentWave}`;
+// Combat mechanics
+function resolveCombat(attacker, defender, dx, dy) {
+    const isFlank = dx === 0 || dy === 0;
+    if (isFlank) {
+        defender.hp -= 10;
+        if (defender.hp <= 0) {
+            removeUnit(defender);
+        }
+    } else {
+        attacker.hp -= 5;
+        defender.hp -= 5;
+        if (attacker.hp <= 0) removeUnit(attacker);
+        if (defender.hp <= 0) removeUnit(defender);
+    }
 }
 
-function gameLoop() {
-  update();
-  draw();
-  requestAnimationFrame(gameLoop);
+// Remove a unit
+function removeUnit(unit) {
+    const tile = getTile(unit.x, unit.y);
+    tile.unit = null;
+    const unitArray = unit.owner === 'player' ? playerUnits : enemyUnits;
+    const index = unitArray.indexOf(unit);
+    if (index !== -1) unitArray.splice(index, 1);
+    const unitElement = tile.element.querySelector('.unit');
+    tile.element.removeChild(unitElement);
 }
 
-gameLoop(); // Start the game loop
+// Initialize the game
+addBase(0, 0, 'player');
+addBase(9, 9, 'enemy');
+addUnit(1, 1, 'player');
+addUnit(8, 8, 'enemy');
