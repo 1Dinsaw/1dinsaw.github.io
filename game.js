@@ -4,6 +4,7 @@ const playerUnits = [];
 const enemyUnits = [];
 const bases = [];
 let selectedUnit = null;
+let currentTurn = 'player';
 
 // Initialize the game board
 const gameBoard = document.getElementById('game-board');
@@ -15,7 +16,7 @@ for (let y = 0; y < boardSize; y++) {
         tile.dataset.y = y;
         tile.addEventListener('click', () => handleTileClick(x, y));
         gameBoard.appendChild(tile);
-        board.push({ x, y, unit: null, base: null });
+        board.push({ x, y, unit: null, base: null, element: tile });
     }
 }
 
@@ -25,6 +26,7 @@ function addBase(x, y, owner) {
     baseTile.base = owner;
     const baseElement = document.createElement('div');
     baseElement.className = 'base';
+    baseElement.textContent = owner === 'player' ? 'P' : 'E';
     baseTile.element.appendChild(baseElement);
     bases.push({ x, y, owner });
 }
@@ -35,6 +37,15 @@ function addUnit(x, y, owner) {
     const unitTile = getTile(x, y);
     const unitElement = document.createElement('div');
     unitElement.className = `unit ${owner === 'enemy' ? 'enemy' : ''}`;
+
+    // Add health bar
+    const healthBar = document.createElement('div');
+    healthBar.className = 'health-bar';
+    const healthBarInner = document.createElement('div');
+    healthBarInner.className = 'health-bar-inner';
+    healthBar.appendChild(healthBarInner);
+    unitElement.appendChild(healthBar);
+
     unitTile.unit = unit;
     unitTile.element.appendChild(unitElement);
     (owner === 'player' ? playerUnits : enemyUnits).push(unit);
@@ -48,12 +59,40 @@ function getTile(x, y) {
 // Handle tile clicks
 function handleTileClick(x, y) {
     const tile = getTile(x, y);
+
     if (selectedUnit) {
-        moveUnit(selectedUnit, x, y);
-        selectedUnit = null;
-    } else if (tile.unit && tile.unit.owner === 'player') {
+        if (isValidMove(x, y)) {
+            moveUnit(selectedUnit, x, y);
+            clearHighlights();
+            selectedUnit = null;
+            endTurn();
+        }
+    } else if (tile.unit && tile.unit.owner === currentTurn) {
         selectedUnit = tile.unit;
+        highlightValidMoves(selectedUnit);
     }
+}
+
+// Highlight valid moves
+function highlightValidMoves(unit) {
+    clearHighlights();
+    for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+            const nx = unit.x + dx;
+            const ny = unit.y + dy;
+            const targetTile = getTile(nx, ny);
+            if (targetTile && !targetTile.unit) {
+                targetTile.element.classList.add('valid-move');
+            }
+        }
+    }
+}
+
+// Clear highlights
+function clearHighlights() {
+    document.querySelectorAll('.tile.valid-move').forEach(tile => {
+        tile.classList.remove('valid-move');
+    });
 }
 
 // Move a unit
@@ -64,7 +103,7 @@ function moveUnit(unit, x, y) {
     // Check for combat
     if (newTile.unit) {
         if (newTile.unit.owner !== unit.owner) {
-            resolveCombat(unit, newTile.unit, unit.x - x, unit.y - y);
+            resolveCombat(unit, newTile.unit);
         }
     } else {
         oldTile.unit = null;
@@ -80,18 +119,10 @@ function moveUnit(unit, x, y) {
 }
 
 // Combat mechanics
-function resolveCombat(attacker, defender, dx, dy) {
-    const isFlank = dx === 0 || dy === 0;
-    if (isFlank) {
-        defender.hp -= 10;
-        if (defender.hp <= 0) {
-            removeUnit(defender);
-        }
-    } else {
-        attacker.hp -= 5;
-        defender.hp -= 5;
-        if (attacker.hp <= 0) removeUnit(attacker);
-        if (defender.hp <= 0) removeUnit(defender);
+function resolveCombat(attacker, defender) {
+    defender.hp -= 10;
+    if (defender.hp <= 0) {
+        removeUnit(defender);
     }
 }
 
@@ -106,7 +137,14 @@ function removeUnit(unit) {
     tile.element.removeChild(unitElement);
 }
 
+// End the turn
+function endTurn() {
+    currentTurn = currentTurn === 'player' ? 'enemy' : 'player';
+    document.getElementById('turn-indicator').textContent = `${currentTurn.toUpperCase()}'s Turn`;
+}
+
 // Initialize the game
+document.body.insertAdjacentHTML('afterbegin', '<div id="turn-indicator">PLAYER\'s Turn</div>');
 addBase(0, 0, 'player');
 addBase(9, 9, 'enemy');
 addUnit(1, 1, 'player');

@@ -1,46 +1,44 @@
 body {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
   height: 100vh;
   margin: 0;
-  background-color: #f4f4f4;
+  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg, #1e3c72, #2a5298); /* Cool blue gradient */
+  color: white;
 }
 
 #game-board {
   display: grid;
-  grid-template-columns: repeat(10, 50px);
-  grid-template-rows: repeat(10, 50px);
+  grid-template-columns: repeat(10, 60px);
+  grid-template-rows: repeat(10, 60px);
   gap: 2px;
-  background-color: #ddd;
+  background-color: #333; /* Dark background for the grid */
+  border: 5px solid #222;
+  margin-bottom: 20px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5); /* Shadow for depth */
 }
 
 .tile {
-  width: 50px;
-  height: 50px;
-  background-color: #fff;
-  border: 1px solid #ccc;
+  width: 60px;
+  height: 60px;
+  background-color: #666; /* Neutral tile color */
+  border: 1px solid #555;
   display: flex;
   justify-content: center;
   align-items: center;
   position: relative;
+  cursor: pointer;
+  transition: background-color 0.3s;
 }
 
-.unit {
-  width: 40px;
-  height: 40px;
-  background-color: red;
-  border-radius: 50%;
-  position: absolute;
+.tile:hover {
+  background-color: #777; /* Lighter hover effect */
 }
 
-.enemy {
-  background-color: blue;
-}
-
-.base {
-  background-color: green;
-  width: 100%;
-  height: 100%;
-  z-index: -1;
+.tile.valid-move {
+  background-color: #88c; /* Highlight for valid moves */
+  cursor: pointer;
 }
