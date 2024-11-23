@@ -9,9 +9,9 @@ body {
   #gameCanvas {
     display: block;
     margin: 20px auto;
-    background: #121212; /* Dark base color for the arena */
-    border: 5px solid #4caf50; /* Bright green glowing border */
-    box-shadow: 0 0 20px #4caf50; /* Glow effect */
+    background: #707c00; /* greem base color for the arena */
+    border: 5px solid #003302; /* Bright green glowing border */
+    box-shadow: 0 0 20px #43b847; /* Glow effect */
     position: relative;
   }
   
