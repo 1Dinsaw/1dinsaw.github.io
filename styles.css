@@ -9,8 +9,8 @@ body {
   #gameCanvas {
     display: block;
     margin: 20px auto;
-    background: #707c00; /* greem base color for the arena */
-    border: 5px solid #003302; /* Bright green glowing border */
+    background: #2b2b2b; /* greem base color for the arena */
+    border: 5px solid #43b847; /* Bright green glowing border */
     box-shadow: 0 0 20px #43b847; /* Glow effect */
     position: relative;
   }
