@@ -38,7 +38,73 @@ body {
   background-color: #777; /* Lighter hover effect */
 }
 
+/* Highlight for valid moves */
 .tile.valid-move {
-  background-color: #88c; /* Highlight for valid moves */
+  background-color: #88c; /* Blue for valid moves */
   cursor: pointer;
+}
+
+/* Highlight for valid attacks */
+.tile.valid-attack {
+  background-color: #c88; /* Red for valid attacks */
+  cursor: crosshair;
+  box-shadow: 0 0 5px 2px rgba(255, 0, 0, 0.6); /* Glow effect for attacks */
+}
+
+/* Hover effects for valid actions */
+.tile.valid-move:hover,
+.tile.valid-attack:hover {
+  transform: scale(1.1); /* Slight zoom effect on hover */
+  transition: transform 0.2s ease;
+}
+
+/* Base styles */
+.base {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 24px;
+  font-weight: bold;
+  color: white;
+  background-color: #222; /* Darker base color */
+  border: 3px solid #555;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.7); /* Depth for bases */
+}
+
+/* Unit styles */
+.unit {
+  width: 50%;
+  height: 50%;
+  position: relative;
+  border-radius: 50%; /* Round units */
+  background-color: #fff; /* Neutral unit color */
+  border: 2px solid #000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.unit.enemy {
+  background-color: #f00; /* Enemy units in red */
+}
+
+/* Health bar styles */
+.health-bar {
+  width: 100%;
+  height: 5px;
+  background-color: #444;
+  position: absolute;
+  bottom: -8px; /* Below the unit */
+  left: 0;
+  border-radius: 2px;
+}
+
+.health-bar-inner {
+  width: 100%;
+  height: 100%;
+  background-color: #0f0; /* Green for full health */
+  border-radius: 2px;
+  transition: width 0.3s ease; /* Smooth health reduction */
 }
