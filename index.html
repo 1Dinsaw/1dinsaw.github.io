@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ball game</title>
+    <title>Slope Game with Flying Blocks</title>
     <style>
         body {
             margin: 0;
@@ -19,74 +19,46 @@
         canvas {
             display: block;
             margin-top: 10px;
-            border: 2px solid #fff;
-        }
-
-        #controls {
-            margin-top: 10px;
-        }
-
-        .slider-container {
-            margin: 5px 0;
-        }
-
-        input[type="range"] {
-            width: 200px;
+            border: 2px solid white;
         }
     </style>
 </head>
 <body>
-    <h1>Ball game</h1>
+    <h1>Slope Game with Flying Blocks</h1>
     <canvas id="gameCanvas" width="800" height="600"></canvas>
-    <div id="controls">
-        <div class="slider-container">
-            <label for="speedSlider">Ball Speed:</label>
-            <input type="range" id="speedSlider" min="2" max="10" value="4">
-        </div>
-        <div class="slider-container">
-            <label for="mapSlider">Map Complexity:</label>
-            <input type="range" id="mapSlider" min="1" max="5" value="3">
-        </div>
-    </div>
-
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
-        const speedSlider = document.getElementById("speedSlider");
-        const mapSlider = document.getElementById("mapSlider");
 
         // Game settings
-        let ballSpeed = Number(speedSlider.value);
-        let mapComplexity = Number(mapSlider.value);
+        let ballSpeed = 4;
         const ball = { x: canvas.width / 2, y: canvas.height - 50, radius: 10, dx: 0, dy: -ballSpeed };
         let obstacles = [];
         let gameOver = false;
 
-        // Update ball speed and map complexity on slider change
-        speedSlider.addEventListener("input", () => {
-            ballSpeed = Number(speedSlider.value);
-            ball.dy = -ballSpeed;
-            console.log("Ball Speed updated:", ballSpeed);
-        });
-        mapSlider.addEventListener("input", () => {
-            mapComplexity = Number(mapSlider.value);
-            console.log("Map Complexity updated:", mapComplexity);
-        });
-
-        // Generate random obstacles
-        function generateObstacle() {
-            const width = Math.random() * (200 - 50) + 50; // Random width
-            const x = Math.random() * (canvas.width - width);
-            return { x, y: 0, width, height: 20 };
+        // Generate a random color
+        function randomColor() {
+            const r = Math.floor(Math.random() * 256);
+            const g = Math.floor(Math.random() * 256);
+            const b = Math.floor(Math.random() * 256);
+            return `rgb(${r},${g},${b})`;
         }
 
-        // Initialize map
+        // Generate a random flying block
+        function generateObstacle() {
+            const width = Math.random() * (200 - 50) + 50; // Random width
+            const height = 20; // Block height
+            const x = Math.random() * (canvas.width - width); // Random x position
+            const color = randomColor(); // Assign random color
+            return { x, y: -height, width, height, color }; // Start above the screen
+        }
+
+        // Initialize obstacles
         function initMap() {
             obstacles = [];
-            for (let i = 0; i < mapComplexity * 3; i++) {
-                obstacles.push({ ...generateObstacle(), y: i * 150 });
+            for (let i = 0; i < 6; i++) {
+                obstacles.push({ ...generateObstacle(), y: i * -150 });
             }
-            console.log("Map initialized with obstacles:", obstacles);
         }
 
         // Check collision
@@ -105,7 +77,6 @@
                 ctx.fillStyle = "red";
                 ctx.font = "30px Arial";
                 ctx.fillText("Game Over! Refresh to Restart.", 150, canvas.height / 2);
-                console.log("Game Over");
                 return;
             }
 
@@ -133,23 +104,13 @@
                 ball.dx = -ball.dx;
             }
 
-            // Keep ball within canvas vertically (optional)
-            if (ball.y - ball.radius < 0) {
-                ball.y = ball.radius;
-                ball.dy = -ball.dy;
-            }
-            if (ball.y + ball.radius > canvas.height) {
-                ball.y = canvas.height - ball.radius;
-                ball.dy = -ball.dy;
-            }
-
             // Draw obstacles
-            ctx.fillStyle = "white";
             obstacles.forEach((obstacle, index) => {
+                ctx.fillStyle = obstacle.color; // Use random color
                 ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
 
                 // Move obstacles down
-                obstacle.y += ballSpeed / 2;
+                obstacle.y += ballSpeed;
 
                 // Check collision
                 if (checkCollision(ball, obstacle)) {
@@ -158,7 +119,7 @@
 
                 // Recycle obstacle if off-screen
                 if (obstacle.y > canvas.height) {
-                    obstacles[index] = { ...generateObstacle(), y: -20 };
+                    obstacles[index] = generateObstacle(); // Reset obstacle
                 }
             });
 
@@ -166,17 +127,33 @@
             requestAnimationFrame(gameLoop);
         }
 
-        // Initialize controls and game
+        // Handle key events
         document.addEventListener("keydown", (e) => {
-            if (e.key === "ArrowLeft" || e.key === "a") ball.dx = -ballSpeed / 2;
-            if (e.key === "ArrowRight" || e.key === "d") ball.dx = ballSpeed / 2;
+            if (e.key === "ArrowLeft" || e.key === "a") {
+                ball.dx = -ballSpeed / 2;
+            }
+            if (e.key === "ArrowRight" || e.key === "d") {
+                ball.dx = ballSpeed / 2;
+            }
+            if (e.key === "ArrowUp") {
+                ballSpeed = Math.min(ballSpeed + 0.5, 10);
+                ball.dy = -ballSpeed;
+                console.log("Increased speed:", ballSpeed);
+            }
+            if (e.key === "ArrowDown") {
+                ballSpeed = Math.max(ballSpeed - 0.5, 2);
+                ball.dy = -ballSpeed;
+                console.log("Decreased speed:", ballSpeed);
+            }
         });
 
-        document.addEventListener("keyup", () => {
-            ball.dx = 0;
+        document.addEventListener("keyup", (e) => {
+            if (e.key === "ArrowLeft" || e.key === "a" || e.key === "ArrowRight" || e.key === "d") {
+                ball.dx = 0;
+            }
         });
 
-        console.log("Game initialization starting...");
+        // Initialize and start game
         initMap();
         gameLoop();
     </script>
