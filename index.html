@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Slope Game Debug</title>
+    <title>Ball game</title>
     <style>
         body {
             margin: 0;
@@ -36,7 +36,7 @@
     </style>
 </head>
 <body>
-    <h1>Slope Game Debug</h1>
+    <h1>Ball game</h1>
     <canvas id="gameCanvas" width="800" height="600"></canvas>
     <div id="controls">
         <div class="slider-container">
@@ -54,9 +54,6 @@
         const ctx = canvas.getContext("2d");
         const speedSlider = document.getElementById("speedSlider");
         const mapSlider = document.getElementById("mapSlider");
-
-        // Debug: Log that the script is loading properly
-        console.log("Script loaded successfully.");
 
         // Game settings
         let ballSpeed = Number(speedSlider.value);
@@ -126,8 +123,25 @@
             ball.x += ball.dx;
             ball.y += ball.dy;
 
-            // Keep ball on canvas
-            if (ball.x - ball.radius < 0 || ball.x + ball.radius > canvas.width) ball.dx = -ball.dx;
+            // Keep ball within canvas horizontally
+            if (ball.x - ball.radius < 0) {
+                ball.x = ball.radius;
+                ball.dx = -ball.dx;
+            }
+            if (ball.x + ball.radius > canvas.width) {
+                ball.x = canvas.width - ball.radius;
+                ball.dx = -ball.dx;
+            }
+
+            // Keep ball within canvas vertically (optional)
+            if (ball.y - ball.radius < 0) {
+                ball.y = ball.radius;
+                ball.dy = -ball.dy;
+            }
+            if (ball.y + ball.radius > canvas.height) {
+                ball.y = canvas.height - ball.radius;
+                ball.dy = -ball.dy;
+            }
 
             // Draw obstacles
             ctx.fillStyle = "white";
