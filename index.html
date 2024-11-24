@@ -26,11 +26,29 @@
         h1 {
             margin-top: 20px;
         }
+
+        #startButton {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 18px;
+            background-color: #444;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        #startButton:hover {
+            background-color: #666;
+        }
     </style>
 </head>
 <body>
     <h1>Slope Game with Flying Blocks</h1>
     <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <!-- Start Button -->
+    <button id="startButton">Start Game</button>
+
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
@@ -40,7 +58,7 @@
         const ball = { x: canvas.width / 2, y: canvas.height - 50, radius: 10, dx: 0, dy: -ballSpeed };
         let obstacles = [];
         let gameOver = false;
-        let score = 0; // Initialize the score variable
+        let score = 0;
 
         // Create audio objects
         const backgroundMusic = new Audio("music-no-copyright-239544.mp3");
@@ -51,15 +69,22 @@
         backgroundMusic.loop = true;
         backgroundMusic.volume = 0.5;
 
-        // Start the game and play background music when the user interacts
+        // Start the game and play background music when the user clicks the Start button
         let gameStarted = false;
+
+        // Start the game and music when the button is clicked
+        document.getElementById("startButton").addEventListener("click", startGame);
 
         function startGame() {
             if (!gameStarted) {
-                backgroundMusic.play(); // Start the background music when the game starts
+                // Start the background music when the game starts
+                backgroundMusic.play().catch(e => {
+                    console.error("Error playing background music:", e);
+                });
                 gameStarted = true;
                 initMap();
                 gameLoop();
+                document.getElementById("startButton").style.display = "none"; // Hide the start button after starting the game
             }
         }
 
@@ -106,7 +131,9 @@
                 ctx.fillText("Game Over! Refresh to Restart.", 150, canvas.height / 2);
 
                 // Play game over sound
-                gameOverSound.play();
+                gameOverSound.play().catch(e => {
+                    console.error("Error playing game over sound:", e);
+                });
                 return;
             }
 
@@ -129,13 +156,17 @@
                 ball.x = ball.radius;
                 ball.dx = -ball.dx;
                 // Play bounce sound
-                bounceSound.play();
+                bounceSound.play().catch(e => {
+                    console.error("Error playing bounce sound:", e);
+                });
             }
             if (ball.x + ball.radius > canvas.width) {
                 ball.x = canvas.width - ball.radius;
                 ball.dx = -ball.dx;
                 // Play bounce sound
-                bounceSound.play();
+                bounceSound.play().catch(e => {
+                    console.error("Error playing bounce sound:", e);
+                });
             }
 
             // Bounce off top and bottom
@@ -143,13 +174,17 @@
                 ball.y = ball.radius;
                 ball.dy = -ball.dy; // Bounce the ball
                 // Play bounce sound
-                bounceSound.play();
+                bounceSound.play().catch(e => {
+                    console.error("Error playing bounce sound:", e);
+                });
             }
             if (ball.y + ball.radius > canvas.height) {
                 ball.y = canvas.height - ball.radius;
                 ball.dy = -ball.dy; // Bounce the ball
                 // Play bounce sound
-                bounceSound.play();
+                bounceSound.play().catch(e => {
+                    console.error("Error playing bounce sound:", e);
+                });
             }
 
             // Draw obstacles
@@ -182,23 +217,23 @@
 
         // Handle key events
         document.addEventListener("keydown", (e) => {
-            if (!gameStarted) startGame(); // Start the game when the user presses a key
-
-            if (e.key === "ArrowLeft" || e.key === "a") {
-                ball.dx = -ballSpeed / 2;
-            }
-            if (e.key === "ArrowRight" || e.key === "d") {
-                ball.dx = ballSpeed / 2;
-            }
-            if (e.key === "ArrowUp") {
-                ballSpeed = Math.min(ballSpeed + 0.5, 10);
-                ball.dy = -ballSpeed;
-                console.log("Increased speed:", ballSpeed);
-            }
-            if (e.key === "ArrowDown") {
-                ballSpeed = Math.max(ballSpeed - 0.5, 2);
-                ball.dy = -ballSpeed;
-                console.log("Decreased speed:", ballSpeed);
+            if (gameStarted) {
+                if (e.key === "ArrowLeft" || e.key === "a") {
+                    ball.dx = -ballSpeed / 2;
+                }
+                if (e.key === "ArrowRight" || e.key === "d") {
+                    ball.dx = ballSpeed / 2;
+                }
+                if (e.key === "ArrowUp") {
+                    ballSpeed = Math.min(ballSpeed + 0.5, 10);
+                    ball.dy = -ballSpeed;
+                    console.log("Increased speed:", ballSpeed);
+                }
+                if (e.key === "ArrowDown") {
+                    ballSpeed = Math.max(ballSpeed - 0.5, 2);
+                    ball.dy = -ballSpeed;
+                    console.log("Decreased speed:", ballSpeed);
+                }
             }
         });
 
@@ -214,9 +249,6 @@
                 score++; // Increase score every second
             }
         }, 1000);
-
-        // Add a click event listener to start the game as well
-        canvas.addEventListener("click", startGame);
 
     </script>
 </body>
