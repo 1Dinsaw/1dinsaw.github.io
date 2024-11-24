@@ -22,6 +22,10 @@
             margin-top: 10px;
             border: 2px solid white;
         }
+
+        h1 {
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
@@ -43,10 +47,21 @@
         const bounceSound = new Audio("bounce.mp3");
         const gameOverSound = new Audio("gameOver.mp3");
 
-        // Set the background music to loop
+        // Set the background music to loop but don't play yet
         backgroundMusic.loop = true;
-        backgroundMusic.volume = 0.5; // Adjust volume as needed
-        backgroundMusic.play(); // Start playing background music
+        backgroundMusic.volume = 0.5;
+
+        // Start the game and play background music when the user interacts
+        let gameStarted = false;
+
+        function startGame() {
+            if (!gameStarted) {
+                backgroundMusic.play(); // Start the background music when the game starts
+                gameStarted = true;
+                initMap();
+                gameLoop();
+            }
+        }
 
         // Generate a random color
         function randomColor() {
@@ -167,6 +182,8 @@
 
         // Handle key events
         document.addEventListener("keydown", (e) => {
+            if (!gameStarted) startGame(); // Start the game when the user presses a key
+
             if (e.key === "ArrowLeft" || e.key === "a") {
                 ball.dx = -ballSpeed / 2;
             }
@@ -198,9 +215,9 @@
             }
         }, 1000);
 
-        // Initialize and start game
-        initMap();
-        gameLoop();
+        // Add a click event listener to start the game as well
+        canvas.addEventListener("click", startGame);
+
     </script>
 </body>
 </html>
