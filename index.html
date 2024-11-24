@@ -16,6 +16,7 @@
             color: white;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             text-align: center;
+            flex-direction: column;
         }
 
         h1 {
@@ -80,13 +81,12 @@
     </style>
 </head>
 <body>
-    <div>
-        <h1>Slope Game with Flying Blocks</h1>
-        <canvas id="gameCanvas" width="800" height="600"></canvas>
-        <button id="startButton">Start Game</button>
-        <div id="score">Score: 0</div>
-        <div id="gameOverText" style="display:none;">Game Over! Refresh to Restart.</div>
-    </div>
+    <h1>Slope Game with Flying Blocks</h1>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <!-- Start Button Positioned Below the Canvas -->
+    <button id="startButton">Start Game</button>
+    <div id="score">Score: 0</div>
+    <div id="gameOverText" style="display:none;">Game Over! Refresh to Restart.</div>
 
     <script>
         const canvas = document.getElementById("gameCanvas");
@@ -281,6 +281,7 @@
                 score++; // Increase score every second
             }
         }, 1000);
+
     </script>
 </body>
 </html>
