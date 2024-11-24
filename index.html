@@ -3,11 +3,168 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dinsaw fight</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Slope Game Debug</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #111;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+
+        canvas {
+            display: block;
+            margin-top: 10px;
+            border: 2px solid #fff;
+        }
+
+        #controls {
+            margin-top: 10px;
+        }
+
+        .slider-container {
+            margin: 5px 0;
+        }
+
+        input[type="range"] {
+            width: 200px;
+        }
+    </style>
 </head>
 <body>
-    <div id="game-board"></div>
-    <script src="script.js"></script>
+    <h1>Slope Game Debug</h1>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div id="controls">
+        <div class="slider-container">
+            <label for="speedSlider">Ball Speed:</label>
+            <input type="range" id="speedSlider" min="2" max="10" value="4">
+        </div>
+        <div class="slider-container">
+            <label for="mapSlider">Map Complexity:</label>
+            <input type="range" id="mapSlider" min="1" max="5" value="3">
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const speedSlider = document.getElementById("speedSlider");
+        const mapSlider = document.getElementById("mapSlider");
+
+        // Debug: Log that the script is loading properly
+        console.log("Script loaded successfully.");
+
+        // Game settings
+        let ballSpeed = Number(speedSlider.value);
+        let mapComplexity = Number(mapSlider.value);
+        const ball = { x: canvas.width / 2, y: canvas.height - 50, radius: 10, dx: 0, dy: -ballSpeed };
+        let obstacles = [];
+        let gameOver = false;
+
+        // Update ball speed and map complexity on slider change
+        speedSlider.addEventListener("input", () => {
+            ballSpeed = Number(speedSlider.value);
+            ball.dy = -ballSpeed;
+            console.log("Ball Speed updated:", ballSpeed);
+        });
+        mapSlider.addEventListener("input", () => {
+            mapComplexity = Number(mapSlider.value);
+            console.log("Map Complexity updated:", mapComplexity);
+        });
+
+        // Generate random obstacles
+        function generateObstacle() {
+            const width = Math.random() * (200 - 50) + 50; // Random width
+            const x = Math.random() * (canvas.width - width);
+            return { x, y: 0, width, height: 20 };
+        }
+
+        // Initialize map
+        function initMap() {
+            obstacles = [];
+            for (let i = 0; i < mapComplexity * 3; i++) {
+                obstacles.push({ ...generateObstacle(), y: i * 150 });
+            }
+            console.log("Map initialized with obstacles:", obstacles);
+        }
+
+        // Check collision
+        function checkCollision(ball, obstacle) {
+            return (
+                ball.y - ball.radius <= obstacle.y + obstacle.height &&
+                ball.y + ball.radius >= obstacle.y &&
+                ball.x + ball.radius >= obstacle.x &&
+                ball.x - ball.radius <= obstacle.x + obstacle.width
+            );
+        }
+
+        // Main game loop
+        function gameLoop() {
+            if (gameOver) {
+                ctx.fillStyle = "red";
+                ctx.font = "30px Arial";
+                ctx.fillText("Game Over! Refresh to Restart.", 150, canvas.height / 2);
+                console.log("Game Over");
+                return;
+            }
+
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw ball
+            ctx.fillStyle = "lime";
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.closePath();
+
+            // Update ball position
+            ball.x += ball.dx;
+            ball.y += ball.dy;
+
+            // Keep ball on canvas
+            if (ball.x - ball.radius < 0 || ball.x + ball.radius > canvas.width) ball.dx = -ball.dx;
+
+            // Draw obstacles
+            ctx.fillStyle = "white";
+            obstacles.forEach((obstacle, index) => {
+                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+
+                // Move obstacles down
+                obstacle.y += ballSpeed / 2;
+
+                // Check collision
+                if (checkCollision(ball, obstacle)) {
+                    gameOver = true;
+                }
+
+                // Recycle obstacle if off-screen
+                if (obstacle.y > canvas.height) {
+                    obstacles[index] = { ...generateObstacle(), y: -20 };
+                }
+            });
+
+            // Request next frame
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Initialize controls and game
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "ArrowLeft" || e.key === "a") ball.dx = -ballSpeed / 2;
+            if (e.key === "ArrowRight" || e.key === "d") ball.dx = ballSpeed / 2;
+        });
+
+        document.addEventListener("keyup", () => {
+            ball.dx = 0;
+        });
+
+        console.log("Game initialization starting...");
+        initMap();
+        gameLoop();
+    </script>
 </body>
 </html>
