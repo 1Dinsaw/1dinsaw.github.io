@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ball Dinsaw</title>
-
     <style>
         body {
             margin: 0;
@@ -16,15 +15,14 @@
             background-size: cover;
             color: white;
             font-family: Arial, sans-serif;
-            height: 100vh; /* Ensure body fills the viewport */
-            display: flex;
+            height: 100vh;
             justify-content: center;
         }
 
         canvas {
             display: block;
-            margin-top: 10px;
-            border: none; /* Remove the white border */
+            margin-top: 20px;
+            border: none;
         }
 
         h1 {
@@ -53,20 +51,41 @@
             color: white;
             border: none;
             cursor: pointer;
+            display: none;
         }
 
         #backToTitleButton:hover {
             background-color: #666;
         }
+
+        #highScores {
+            margin-top: 20px;
+            font-size: 18px;
+        }
+
+        .highScoreItem {
+            margin: 5px 0;
+        }
     </style>
 </head>
 <body>
     <h1>Ball Dinsaw</h1>
+    <div id="titleScreen">
+        <!-- High Scores List -->
+        <div id="highScores">
+            <h3>High Scores</h3>
+            <div class="highScoreItem">1. 1000 Points</div>
+            <div class="highScoreItem">2. 800 Points</div>
+            <div class="highScoreItem">3. 500 Points</div>
+        </div>
+        <!-- Start Button -->
+        <button id="startButton">Play Game</button>
+    </div>
+
     <canvas id="gameCanvas" width="800" height="600"></canvas>
-    <!-- Start Button -->
-    <button id="startButton">Start Game</button>
+
     <!-- Back to Title Button -->
-    <button id="backToTitleButton" style="display:none;">Back to Title Screen</button>
+    <button id="backToTitleButton">Back to Title Screen</button>
 
     <script>
         const canvas = document.getElementById("gameCanvas");
@@ -106,8 +125,8 @@
                 gameStarted = true;
                 initMap();
                 gameLoop();
-                document.getElementById("startButton").style.display = "none"; // Hide the start button after starting the game
-                document.getElementById("backToTitleButton").style.display = "inline"; // Show the back to title button
+                document.getElementById("titleScreen").style.display = "none"; // Hide the title screen after starting the game
+                document.getElementById("backToTitleButton").style.display = "none"; // Hide the back to title button while playing
             }
         }
 
@@ -126,7 +145,8 @@
 
             // Show the title screen again
             document.getElementById("startButton").style.display = "inline";
-            document.getElementById("backToTitleButton").style.display = "none";
+            document.getElementById("titleScreen").style.display = "block"; // Show the title screen again
+            document.getElementById("backToTitleButton").style.display = "none"; // Hide the back button again
         }
 
         // Generate a random color
@@ -175,6 +195,9 @@
                 gameOverSound.play().catch(e => {
                     console.error("Error playing game over sound:", e);
                 });
+
+                // Show the Back to Title Screen button when the game is over
+                document.getElementById("backToTitleButton").style.display = "inline";
                 return;
             }
 
@@ -234,60 +257,29 @@
                 ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
 
                 // Move obstacles down
-                obstacle.y += ballSpeed;
+                obstacle.y += 2;
 
-                // Check collision
+                // Reset obstacle when it goes off screen
+                if (obstacle.y > canvas.height) {
+                    obstacles[index] = generateObstacle();
+                }
+
+                // Check for collisions
                 if (checkCollision(ball, obstacle)) {
                     gameOver = true;
                 }
-
-                // Recycle obstacle if off-screen
-                if (obstacle.y > canvas.height) {
-                    obstacles[index] = generateObstacle(); // Reset obstacle
-                }
             });
 
-            // Draw score
+            // Update score
             ctx.fillStyle = "white";
-            ctx.font = "24px Arial";
-            ctx.fillText("Score: " + score, 20, 30); // Display score at the top-left corner
+            ctx.font = "20px Arial";
+            ctx.fillText(`Score: ${score}`, 20, 30);
 
-            // Request next frame
-            requestAnimationFrame(gameLoop);
-        }
-
-        // Handle key events
-        document.addEventListener("keydown", (e) => {
-            if (gameStarted) {
-                if (e.key === "ArrowLeft" || e.key === "a") {
-                    ball.dx = -ballSpeed / 2;
-                }
-                if (e.key === "ArrowRight" || e.key === "d") {
-                    ball.dx = ballSpeed / 2;
-                }
-                if (e.key === "ArrowUp") {
-                    ballSpeed = Math.min(ballSpeed + 0.5, 10);
-                    ball.dy = -ballSpeed;
-                }
-                if (e.key === "ArrowDown") {
-                    ballSpeed = Math.max(ballSpeed - 0.5, 2);
-                    ball.dy = -ballSpeed;
-                }
-            }
-        });
-
-        document.addEventListener("keyup", (e) => {
-            if (e.key === "ArrowLeft" || e.key === "a" || e.key === "ArrowRight" || e.key === "d") {
-                ball.dx = 0;
-            }
-        });
-
-        // Increase score every second
-        setInterval(() => {
+            // Continue game loop if not over
             if (!gameOver) {
-                score++; // Increase score every second
+                requestAnimationFrame(gameLoop);
             }
-        }, 1000);
+        }
     </script>
 </body>
 </html>
