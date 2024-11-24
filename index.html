@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Slope Game with Flying Blocks</title>
+    <title>Ball Dinsaw</title>
 
     <style>
         body {
@@ -27,7 +27,7 @@
             margin-top: 20px;
         }
 
-        #startButton {
+        #difficultySelect {
             margin-top: 20px;
             padding: 10px 20px;
             font-size: 18px;
@@ -37,17 +37,21 @@
             cursor: pointer;
         }
 
-        #startButton:hover {
+        #difficultySelect:hover {
             background-color: #666;
         }
     </style>
 </head>
 <body>
-    <h1>Slope Game with Flying Blocks</h1>
+    <h1>Ball Dinsaw(Trin)</h1>
     <canvas id="gameCanvas" width="800" height="600"></canvas>
 
-    <!-- Start Button -->
-    <button id="startButton">Start Game</button>
+    <!-- Difficulty Select Dropdown -->
+    <select id="difficultySelect">
+        <option value="easy">Easy</option>
+        <option value="mid">Medium</option>
+        <option value="hard">Hard</option>
+    </select>
 
     <script>
         const canvas = document.getElementById("gameCanvas");
@@ -69,23 +73,35 @@
         backgroundMusic.loop = true;
         backgroundMusic.volume = 0.5;
 
-        // Start the game and play background music when the user clicks the Start button
-        let gameStarted = false;
+        // Start the game when a difficulty is selected
+        document.getElementById("difficultySelect").addEventListener("change", startGame);
 
-        // Start the game and music when the button is clicked
-        document.getElementById("startButton").addEventListener("click", startGame);
-
+        // Function to start the game based on selected difficulty
         function startGame() {
-            if (!gameStarted) {
-                // Start the background music when the game starts
-                backgroundMusic.play().catch(e => {
-                    console.error("Error playing background music:", e);
-                });
-                gameStarted = true;
-                initMap();
-                gameLoop();
-                document.getElementById("startButton").style.display = "none"; // Hide the start button after starting the game
+            const difficulty = document.getElementById("difficultySelect").value;
+
+            // Adjust the difficulty by modifying obstacle speed and spawn frequency
+            if (difficulty === "easy") {
+                obstacleSpeed = 2;  // Slower obstacles
+                obstacleFrequency = 2000; // Lower frequency of obstacles
+            } else if (difficulty === "mid") {
+                obstacleSpeed = 4;  // Normal obstacles
+                obstacleFrequency = 1500; // Moderate frequency
+            } else if (difficulty === "hard") {
+                obstacleSpeed = 6;  // Faster obstacles
+                obstacleFrequency = 1000; // High frequency of obstacles
             }
+
+            // Start the background music when the game starts
+            backgroundMusic.play().catch(e => {
+                console.error("Error playing background music:", e);
+            });
+
+            // Hide the difficulty dropdown and start the game loop
+            document.getElementById("difficultySelect").style.display = "none";
+            gameStarted = true;
+            initMap();
+            gameLoop();
         }
 
         // Generate a random color
@@ -111,6 +127,13 @@
             for (let i = 0; i < 6; i++) {
                 obstacles.push({ ...generateObstacle(), y: i * -150 });
             }
+
+            // Set interval to generate new obstacles based on the frequency
+            setInterval(() => {
+                if (!gameOver) {
+                    obstacles.push(generateObstacle());
+                }
+            }, obstacleFrequency);
         }
 
         // Check collision
@@ -192,8 +215,8 @@
                 ctx.fillStyle = obstacle.color; // Use random color
                 ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
 
-                // Move obstacles down
-                obstacle.y += ballSpeed;
+                // Move obstacles down based on the difficulty
+                obstacle.y += obstacleSpeed;
 
                 // Check collision
                 if (checkCollision(ball, obstacle)) {
