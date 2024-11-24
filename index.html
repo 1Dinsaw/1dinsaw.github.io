@@ -16,12 +16,15 @@
             background-size: cover;
             color: white;
             font-family: Arial, sans-serif;
+            height: 100vh; /* Ensure body fills the viewport */
+            display: flex;
+            justify-content: center;
         }
 
         canvas {
             display: block;
             margin-top: 10px;
-            border: 2px solid white;
+            border: none; /* Remove the white border */
         }
 
         h1 {
@@ -92,7 +95,7 @@
         document.getElementById("startButton").addEventListener("click", startGame);
 
         // Start the game and music when the Back to Title button is clicked
-        document.getElementById("backToTitleButton").addEventListener("click", goToTitleScreen);
+        document.getElementById("backToTitleButton").addEventListener("click", resetGame);
 
         function startGame() {
             if (!gameStarted) {
@@ -108,10 +111,14 @@
             }
         }
 
-        function goToTitleScreen() {
+        function resetGame() {
             // Reset game state and stop music
-            gameOver = true;
+            gameOver = false;
             score = 0;
+            ball.x = canvas.width / 2;
+            ball.y = canvas.height - 50;
+            ball.dx = 0;
+            ball.dy = -ballSpeed;
             obstacles = [];
             gameStarted = false;
             backgroundMusic.pause();
