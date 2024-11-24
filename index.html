@@ -82,7 +82,7 @@
         <button id="startButton">Play Game</button>
     </div>
 
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <canvas id="gameCanvas"></canvas>
 
     <!-- Back to Title Button -->
     <button id="backToTitleButton">Back to Title Screen</button>
@@ -116,6 +116,14 @@
         // Start the game and music when the Back to Title button is clicked
         document.getElementById("backToTitleButton").addEventListener("click", resetGame);
 
+        // Make canvas responsive
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
         function startGame() {
             if (!gameStarted) {
                 // Start the background music when the game starts
@@ -126,7 +134,7 @@
                 initMap();
                 gameLoop();
                 document.getElementById("titleScreen").style.display = "none"; // Hide the title screen after starting the game
-                document.getElementById("backToTitleButton").style.display = "none"; // Hide the back to title button while playing
+                document.getElementById("backToTitleButton").style.display = "inline"; // Show the back to title button while playing
             }
         }
 
@@ -170,7 +178,7 @@
         function initMap() {
             obstacles = [];
             for (let i = 0; i < 6; i++) {
-                obstacles.push({ ...generateObstacle(), y: i * -150 });
+                obstacles.push({ ...generateObstacle(), y: Math.random() * -500 }); // Random starting position
             }
         }
 
@@ -262,6 +270,7 @@
                 // Reset obstacle when it goes off screen
                 if (obstacle.y > canvas.height) {
                     obstacles[index] = generateObstacle();
+                    score += 10;  // Increment score when an obstacle goes off-screen
                 }
 
                 // Check for collisions
@@ -270,12 +279,12 @@
                 }
             });
 
-            // Update score
+            // Update score display
             ctx.fillStyle = "white";
             ctx.font = "20px Arial";
             ctx.fillText(`Score: ${score}`, 20, 30);
 
-            // Continue game loop if not over
+            // Continue the game loop if the game is not over
             if (!gameOver) {
                 requestAnimationFrame(gameLoop);
             }
