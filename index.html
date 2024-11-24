@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Slope Game with Flying Blocks</title>
+
     <style>
         body {
             margin: 0;
@@ -102,6 +103,16 @@
             if (ball.x + ball.radius > canvas.width) {
                 ball.x = canvas.width - ball.radius;
                 ball.dx = -ball.dx;
+            }
+
+            // Bounce off the top and bottom walls
+            if (ball.y - ball.radius < 0) {
+                ball.y = ball.radius;
+                ball.dy = -ball.dy; // Bounce off the top
+            }
+            if (ball.y + ball.radius > canvas.height) {
+                ball.y = canvas.height - ball.radius;
+                ball.dy = -ball.dy; // Bounce off the bottom
             }
 
             // Draw obstacles
