@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Slope Game with Flying Blocks</title>
+    <title>Ball Dinsaw</title>
+
     <style>
         body {
             margin: 0;
@@ -11,7 +12,8 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            background-color: #111;
+            background: url('triangles-1430105_1280.png') no-repeat center center fixed;
+            background-size: cover;
             color: white;
             font-family: Arial, sans-serif;
         }
@@ -26,43 +28,46 @@
             margin-top: 20px;
         }
 
-        #startScreen {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            background-color: #111;
-        }
-
-        #highScores {
-            font-size: 18px;
+        #startButton {
             margin-top: 20px;
-        }
-
-        #playButton {
+            padding: 10px 20px;
+            font-size: 18px;
+            background-color: #444;
+            color: white;
+            border: none;
             cursor: pointer;
         }
 
-        #playButton:hover {
-            opacity: 0.8;
+        #startButton:hover {
+            background-color: #666;
         }
 
+        #backToTitleButton {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 18px;
+            background-color: #444;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        #backToTitleButton:hover {
+            background-color: #666;
+        }
     </style>
 </head>
 <body>
-    <div id="startScreen">
-        <h1>Slope Game with Flying Blocks</h1>
-        <div id="highScores">High Scores:</div>
-        <img id="playButton" src="play-button-7426443_640.png" alt="Play Button" width="100">
-    </div>
-    <canvas id="gameCanvas" width="800" height="600" style="display: none;"></canvas>
+    <h1>Ball Dinsaw</h1>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <!-- Start Button -->
+    <button id="startButton">Start Game</button>
+    <!-- Back to Title Button -->
+    <button id="backToTitleButton" style="display:none;">Back to Title Screen</button>
 
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
-        const playButton = document.getElementById("playButton");
-        const startScreen = document.getElementById("startScreen");
 
         // Game settings
         let ballSpeed = 4;
@@ -71,31 +76,50 @@
         let gameOver = false;
         let score = 0;
 
-        // Audio
+        // Create audio objects
         const backgroundMusic = new Audio("music-no-copyright-239544.mp3");
-        backgroundMusic.loop = true;
-        backgroundMusic.volume = 0.5;
         const bounceSound = new Audio("bounce.mp3");
         const gameOverSound = new Audio("gameOver.mp3");
 
-        // High Scores
-        let highScores = JSON.parse(localStorage.getItem("highScores")) || [];
+        // Set the background music to loop but don't play yet
+        backgroundMusic.loop = true;
+        backgroundMusic.volume = 0.5;
 
-        // Start the game when the play button is clicked
-        playButton.addEventListener("click", startGame);
+        // Start the game and music when the user clicks the Start button
+        let gameStarted = false;
+
+        // Start the game and music when the button is clicked
+        document.getElementById("startButton").addEventListener("click", startGame);
+
+        // Start the game and music when the Back to Title button is clicked
+        document.getElementById("backToTitleButton").addEventListener("click", goToTitleScreen);
 
         function startGame() {
-            // Play background music
-            backgroundMusic.play().catch((error) => {
-                console.error("Error playing background music:", error);
-            });
+            if (!gameStarted) {
+                // Start the background music when the game starts
+                backgroundMusic.play().catch(e => {
+                    console.error("Error playing background music:", e);
+                });
+                gameStarted = true;
+                initMap();
+                gameLoop();
+                document.getElementById("startButton").style.display = "none"; // Hide the start button after starting the game
+                document.getElementById("backToTitleButton").style.display = "inline"; // Show the back to title button
+            }
+        }
 
-            // Hide the start screen and show the canvas
-            startScreen.style.display = "none";
-            canvas.style.display = "block";
-            gameStarted = true;
-            initMap();
-            gameLoop();
+        function goToTitleScreen() {
+            // Reset game state and stop music
+            gameOver = true;
+            score = 0;
+            obstacles = [];
+            gameStarted = false;
+            backgroundMusic.pause();
+            backgroundMusic.currentTime = 0;
+
+            // Show the title screen again
+            document.getElementById("startButton").style.display = "inline";
+            document.getElementById("backToTitleButton").style.display = "none";
         }
 
         // Generate a random color
@@ -106,36 +130,24 @@
             return `rgb(${r},${g},${b})`;
         }
 
-        // Generate a random flying block and check for overlap
+        // Generate a random flying block
         function generateObstacle() {
             const width = Math.random() * (200 - 50) + 50; // Random width
             const height = 20; // Block height
-            let x = Math.random() * (canvas.width - width); // Random x position
-            let y = -height; // Start above the screen
+            const x = Math.random() * (canvas.width - width); // Random x position
             const color = randomColor(); // Assign random color
-
-            // Check for overlap with existing blocks
-            while (obstacles.some(block => checkOverlap(x, y, width, height, block))) {
-                x = Math.random() * (canvas.width - width); // Re-generate x position
-            }
-
-            return { x, y, width, height, color };
-        }
-
-        // Check if a new block overlaps with any existing block
-        function checkOverlap(x, y, width, height, block) {
-            return !(x + width < block.x || x > block.x + block.width || y + height < block.y || y > block.y + block.height);
+            return { x, y: -height, width, height, color }; // Start above the screen
         }
 
         // Initialize obstacles
         function initMap() {
             obstacles = [];
             for (let i = 0; i < 6; i++) {
-                obstacles.push(generateObstacle());
+                obstacles.push({ ...generateObstacle(), y: i * -150 });
             }
         }
 
-        // Check collision with the ball
+        // Check collision
         function checkCollision(ball, obstacle) {
             return (
                 ball.y - ball.radius <= obstacle.y + obstacle.height &&
@@ -150,10 +162,12 @@
             if (gameOver) {
                 ctx.fillStyle = "red";
                 ctx.font = "30px Arial";
-                ctx.fillText("Game Over! Refresh to Restart.", 150, canvas.height / 2);
+                ctx.fillText("Game Over! Click 'Back to Title Screen'.", 150, canvas.height / 2);
 
                 // Play game over sound
-                gameOverSound.play().catch(e => console.error("Error playing game over sound:", e));
+                gameOverSound.play().catch(e => {
+                    console.error("Error playing game over sound:", e);
+                });
                 return;
             }
 
@@ -175,55 +189,67 @@
             if (ball.x - ball.radius < 0) {
                 ball.x = ball.radius;
                 ball.dx = -ball.dx;
-                bounceSound.play().catch(e => console.error("Error playing bounce sound:", e));
+                // Play bounce sound
+                bounceSound.play().catch(e => {
+                    console.error("Error playing bounce sound:", e);
+                });
             }
             if (ball.x + ball.radius > canvas.width) {
                 ball.x = canvas.width - ball.radius;
                 ball.dx = -ball.dx;
-                bounceSound.play().catch(e => console.error("Error playing bounce sound:", e));
+                // Play bounce sound
+                bounceSound.play().catch(e => {
+                    console.error("Error playing bounce sound:", e);
+                });
             }
 
             // Bounce off top and bottom
             if (ball.y - ball.radius < 0) {
                 ball.y = ball.radius;
-                ball.dy = -ball.dy;
-                bounceSound.play().catch(e => console.error("Error playing bounce sound:", e));
+                ball.dy = -ball.dy; // Bounce the ball
+                // Play bounce sound
+                bounceSound.play().catch(e => {
+                    console.error("Error playing bounce sound:", e);
+                });
             }
             if (ball.y + ball.radius > canvas.height) {
                 ball.y = canvas.height - ball.radius;
-                ball.dy = -ball.dy;
-                bounceSound.play().catch(e => console.error("Error playing bounce sound:", e));
+                ball.dy = -ball.dy; // Bounce the ball
+                // Play bounce sound
+                bounceSound.play().catch(e => {
+                    console.error("Error playing bounce sound:", e);
+                });
             }
 
-            // Draw obstacles and check collisions
+            // Draw obstacles
             obstacles.forEach((obstacle, index) => {
-                ctx.fillStyle = obstacle.color;
+                ctx.fillStyle = obstacle.color; // Use random color
                 ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
 
                 // Move obstacles down
                 obstacle.y += ballSpeed;
 
-                // Check collision with the ball
+                // Check collision
                 if (checkCollision(ball, obstacle)) {
                     gameOver = true;
                 }
 
                 // Recycle obstacle if off-screen
                 if (obstacle.y > canvas.height) {
-                    obstacles[index] = generateObstacle();
+                    obstacles[index] = generateObstacle(); // Reset obstacle
                 }
             });
 
             // Draw score
             ctx.fillStyle = "white";
             ctx.font = "24px Arial";
-            ctx.fillText("Score: " + score, 20, 30);
+            ctx.fillText("Score: " + score, 20, 30); // Display score at the top-left corner
 
             // Request next frame
             requestAnimationFrame(gameLoop);
         }
 
-        // Handle key events for ball movement
+        // Handle key events
         document.addEventListener("keydown", (e) => {
             if (gameStarted) {
                 if (e.key === "ArrowLeft" || e.key === "a") {
@@ -252,10 +278,9 @@
         // Increase score every second
         setInterval(() => {
             if (!gameOver) {
-                score++;
+                score++; // Increase score every second
             }
         }, 1000);
-
     </script>
 </body>
 </html>
