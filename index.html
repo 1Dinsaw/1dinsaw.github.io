@@ -36,6 +36,17 @@
         const ball = { x: canvas.width / 2, y: canvas.height - 50, radius: 10, dx: 0, dy: -ballSpeed };
         let obstacles = [];
         let gameOver = false;
+        let score = 0; // Initialize the score variable
+
+        // Create audio objects
+        const backgroundMusic = new Audio("music-no-copyright-239544.mp3");
+        const bounceSound = new Audio("bounce.mp3");
+        const gameOverSound = new Audio("gameOver.mp3");
+
+        // Set the background music to loop
+        backgroundMusic.loop = true;
+        backgroundMusic.volume = 0.5; // Adjust volume as needed
+        backgroundMusic.play(); // Start playing background music
 
         // Generate a random color
         function randomColor() {
@@ -78,6 +89,9 @@
                 ctx.fillStyle = "red";
                 ctx.font = "30px Arial";
                 ctx.fillText("Game Over! Refresh to Restart.", 150, canvas.height / 2);
+
+                // Play game over sound
+                gameOverSound.play();
                 return;
             }
 
@@ -99,20 +113,28 @@
             if (ball.x - ball.radius < 0) {
                 ball.x = ball.radius;
                 ball.dx = -ball.dx;
+                // Play bounce sound
+                bounceSound.play();
             }
             if (ball.x + ball.radius > canvas.width) {
                 ball.x = canvas.width - ball.radius;
                 ball.dx = -ball.dx;
+                // Play bounce sound
+                bounceSound.play();
             }
 
-            // Bounce off the top and bottom walls
+            // Bounce off top and bottom
             if (ball.y - ball.radius < 0) {
                 ball.y = ball.radius;
-                ball.dy = -ball.dy; // Bounce off the top
+                ball.dy = -ball.dy; // Bounce the ball
+                // Play bounce sound
+                bounceSound.play();
             }
             if (ball.y + ball.radius > canvas.height) {
                 ball.y = canvas.height - ball.radius;
-                ball.dy = -ball.dy; // Bounce off the bottom
+                ball.dy = -ball.dy; // Bounce the ball
+                // Play bounce sound
+                bounceSound.play();
             }
 
             // Draw obstacles
@@ -133,6 +155,11 @@
                     obstacles[index] = generateObstacle(); // Reset obstacle
                 }
             });
+
+            // Draw score
+            ctx.fillStyle = "white";
+            ctx.font = "24px Arial";
+            ctx.fillText("Score: " + score, 20, 30); // Display score at the top-left corner
 
             // Request next frame
             requestAnimationFrame(gameLoop);
@@ -163,6 +190,13 @@
                 ball.dx = 0;
             }
         });
+
+        // Increase score every second
+        setInterval(() => {
+            if (!gameOver) {
+                score++; // Increase score every second
+            }
+        }, 1000);
 
         // Initialize and start game
         initMap();
