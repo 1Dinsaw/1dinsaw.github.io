@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ball Dinsaw</title>
+    <title>Slope Game with Flying Blocks</title>
 
     <style>
         body {
@@ -27,7 +27,8 @@
             margin-top: 20px;
         }
 
-        #difficultySelect {
+        #difficultySelect,
+        #startButton {
             margin-top: 20px;
             padding: 10px 20px;
             font-size: 18px;
@@ -37,13 +38,18 @@
             cursor: pointer;
         }
 
-        #difficultySelect:hover {
+        #difficultySelect:hover,
+        #startButton:hover {
             background-color: #666;
+        }
+
+        #startButton {
+            display: none; /* Hidden initially, will be shown after selecting difficulty */
         }
     </style>
 </head>
 <body>
-    <h1>Ball Dinsaw(Trin)</h1>
+    <h1>Slope Game with Flying Blocks</h1>
     <canvas id="gameCanvas" width="800" height="600"></canvas>
 
     <!-- Difficulty Select Dropdown -->
@@ -52,6 +58,9 @@
         <option value="mid">Medium</option>
         <option value="hard">Hard</option>
     </select>
+
+    <!-- Start Button -->
+    <button id="startButton">Start Game</button>
 
     <script>
         const canvas = document.getElementById("gameCanvas");
@@ -63,6 +72,10 @@
         let obstacles = [];
         let gameOver = false;
         let score = 0;
+        let gameStarted = false;
+
+        let obstacleSpeed = 4; // Default speed for obstacles
+        let obstacleFrequency = 1500; // Default frequency for obstacles
 
         // Create audio objects
         const backgroundMusic = new Audio("music-no-copyright-239544.mp3");
@@ -73,35 +86,45 @@
         backgroundMusic.loop = true;
         backgroundMusic.volume = 0.5;
 
-        // Start the game when a difficulty is selected
-        document.getElementById("difficultySelect").addEventListener("change", startGame);
+        // Difficulty select event
+        document.getElementById("difficultySelect").addEventListener("change", function() {
+            const difficulty = this.value;
 
-        // Function to start the game based on selected difficulty
-        function startGame() {
-            const difficulty = document.getElementById("difficultySelect").value;
-
-            // Adjust the difficulty by modifying obstacle speed and spawn frequency
+            // Adjust difficulty settings based on the selected value
             if (difficulty === "easy") {
-                obstacleSpeed = 2;  // Slower obstacles
-                obstacleFrequency = 2000; // Lower frequency of obstacles
+                obstacleSpeed = 2;
+                obstacleFrequency = 2000;
             } else if (difficulty === "mid") {
-                obstacleSpeed = 4;  // Normal obstacles
-                obstacleFrequency = 1500; // Moderate frequency
+                obstacleSpeed = 4;
+                obstacleFrequency = 1500;
             } else if (difficulty === "hard") {
-                obstacleSpeed = 6;  // Faster obstacles
-                obstacleFrequency = 1000; // High frequency of obstacles
+                obstacleSpeed = 6;
+                obstacleFrequency = 1000;
             }
 
-            // Start the background music when the game starts
-            backgroundMusic.play().catch(e => {
-                console.error("Error playing background music:", e);
-            });
+            // Show the start button after selecting difficulty
+            document.getElementById("startButton").style.display = "inline-block";
+        });
 
-            // Hide the difficulty dropdown and start the game loop
-            document.getElementById("difficultySelect").style.display = "none";
-            gameStarted = true;
-            initMap();
-            gameLoop();
+        // Start the game when the button is clicked
+        document.getElementById("startButton").addEventListener("click", startGame);
+
+        function startGame() {
+            if (!gameStarted) {
+                // Start background music
+                backgroundMusic.play().catch(e => {
+                    console.error("Error playing background music:", e);
+                });
+
+                // Hide difficulty selector and start button
+                document.getElementById("difficultySelect").style.display = "none";
+                document.getElementById("startButton").style.display = "none";
+
+                // Start game loop
+                gameStarted = true;
+                initMap();
+                gameLoop();
+            }
         }
 
         // Generate a random color
@@ -114,11 +137,11 @@
 
         // Generate a random flying block
         function generateObstacle() {
-            const width = Math.random() * (200 - 50) + 50; // Random width
-            const height = 20; // Block height
-            const x = Math.random() * (canvas.width - width); // Random x position
-            const color = randomColor(); // Assign random color
-            return { x, y: -height, width, height, color }; // Start above the screen
+            const width = Math.random() * (200 - 50) + 50;
+            const height = 20;
+            const x = Math.random() * (canvas.width - width);
+            const color = randomColor();
+            return { x, y: -height, width, height, color };
         }
 
         // Initialize obstacles
@@ -178,7 +201,6 @@
             if (ball.x - ball.radius < 0) {
                 ball.x = ball.radius;
                 ball.dx = -ball.dx;
-                // Play bounce sound
                 bounceSound.play().catch(e => {
                     console.error("Error playing bounce sound:", e);
                 });
@@ -186,7 +208,6 @@
             if (ball.x + ball.radius > canvas.width) {
                 ball.x = canvas.width - ball.radius;
                 ball.dx = -ball.dx;
-                // Play bounce sound
                 bounceSound.play().catch(e => {
                     console.error("Error playing bounce sound:", e);
                 });
@@ -196,7 +217,6 @@
             if (ball.y - ball.radius < 0) {
                 ball.y = ball.radius;
                 ball.dy = -ball.dy; // Bounce the ball
-                // Play bounce sound
                 bounceSound.play().catch(e => {
                     console.error("Error playing bounce sound:", e);
                 });
@@ -204,7 +224,6 @@
             if (ball.y + ball.radius > canvas.height) {
                 ball.y = canvas.height - ball.radius;
                 ball.dy = -ball.dy; // Bounce the ball
-                // Play bounce sound
                 bounceSound.play().catch(e => {
                     console.error("Error playing bounce sound:", e);
                 });
@@ -212,13 +231,13 @@
 
             // Draw obstacles
             obstacles.forEach((obstacle, index) => {
-                ctx.fillStyle = obstacle.color; // Use random color
+                ctx.fillStyle = obstacle.color;
                 ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
 
                 // Move obstacles down based on the difficulty
                 obstacle.y += obstacleSpeed;
 
-                // Check collision
+                // Check for collisions with obstacles
                 if (checkCollision(ball, obstacle)) {
                     gameOver = true;
                 }
@@ -232,7 +251,10 @@
             // Draw score
             ctx.fillStyle = "white";
             ctx.font = "24px Arial";
-            ctx.fillText("Score: " + score, 20, 30); // Display score at the top-left corner
+            ctx.fillText("Score: " + score, 20, 30);
+
+            // Increase score every second
+            score++;
 
             // Request next frame
             requestAnimationFrame(gameLoop);
@@ -250,12 +272,10 @@
                 if (e.key === "ArrowUp") {
                     ballSpeed = Math.min(ballSpeed + 0.5, 10);
                     ball.dy = -ballSpeed;
-                    console.log("Increased speed:", ballSpeed);
                 }
                 if (e.key === "ArrowDown") {
                     ballSpeed = Math.max(ballSpeed - 0.5, 2);
                     ball.dy = -ballSpeed;
-                    console.log("Decreased speed:", ballSpeed);
                 }
             }
         });
@@ -265,14 +285,6 @@
                 ball.dx = 0;
             }
         });
-
-        // Increase score every second
-        setInterval(() => {
-            if (!gameOver) {
-                score++; // Increase score every second
-            }
-        }, 1000);
-
     </script>
 </body>
 </html>
