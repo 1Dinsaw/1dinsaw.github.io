@@ -11,152 +11,91 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            height: 100vh;
             background-color: #111;
             color: white;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: Arial, sans-serif;
+        }
+
+        canvas {
+            display: block;
+            margin-top: 10px;
+            border: 2px solid white;
         }
 
         h1 {
-            font-size: 36px;
-            margin-bottom: 20px;
-            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7);
-        }
-
-        #gameCanvas {
-            display: none; /* Hide canvas initially */
-            border: 4px solid #444;
-            background: #222;
+            margin-top: 20px;
         }
 
         #startScreen {
-            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #111;
         }
 
-        #startScreen h2 {
-            margin-top: 20px;
-            font-size: 24px;
-        }
-
-        #playButton {
-            margin-top: 30px;
-            cursor: pointer;
-            transition: transform 0.3s;
-        }
-
-        #playButton:hover {
-            transform: scale(1.1);
-        }
-
-        #scoreboard {
+        #highScores {
             font-size: 18px;
             margin-top: 20px;
         }
 
-        #scoreboard p {
-            margin: 5px 0;
+        #playButton {
+            cursor: pointer;
         }
 
-        #gameOverText {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 30px;
-            color: red;
-            font-weight: bold;
-            text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.7);
-        }
-
-        #score {
-            position: absolute;
-            top: 10px;
-            left: 20px;
-            font-size: 24px;
-            font-weight: bold;
-            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.7);
+        #playButton:hover {
+            opacity: 0.8;
         }
 
     </style>
 </head>
 <body>
-
     <div id="startScreen">
         <h1>Slope Game with Flying Blocks</h1>
-        <h2>Click the Play button to start</h2>
-        <img id="playButton" src="play-button-7426443_640.png" alt="Play Button" width="200">
-        <div id="scoreboard">
-            <h3>High Scores</h3>
-            <p id="highScores">Loading...</p>
-        </div>
+        <div id="highScores">High Scores:</div>
+        <img id="playButton" src="play-button-7426443_640.png" alt="Play Button" width="100">
     </div>
-
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
-    <div id="gameOverText" style="display:none;">Game Over! Refresh to Restart.</div>
-    <div id="score"></div>
+    <canvas id="gameCanvas" width="800" height="600" style="display: none;"></canvas>
 
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
         const playButton = document.getElementById("playButton");
         const startScreen = document.getElementById("startScreen");
-        const scoreboard = document.getElementById("highScores");
-        const scoreElement = document.getElementById("score");
-        const gameOverText = document.getElementById("gameOverText");
 
+        // Game settings
         let ballSpeed = 4;
         const ball = { x: canvas.width / 2, y: canvas.height - 50, radius: 10, dx: 0, dy: -ballSpeed };
         let obstacles = [];
         let gameOver = false;
         let score = 0;
-        let gameStarted = false;
 
-        // Load high scores from localStorage
-        function loadHighScores() {
-            const highScores = JSON.parse(localStorage.getItem("highScores")) || [];
-            scoreboard.innerHTML = highScores.length
-                ? highScores.map((score, index) => `${index + 1}. ${score}`).join('<br>')
-                : "No high scores yet!";
-        }
+        // Audio
+        const backgroundMusic = new Audio("music-no-copyright-239544.mp3");
+        backgroundMusic.loop = true;
+        backgroundMusic.volume = 0.5;
+        const bounceSound = new Audio("bounce.mp3");
+        const gameOverSound = new Audio("gameOver.mp3");
 
-        // Save new high score to localStorage
-        function saveHighScore(newScore) {
-            const highScores = JSON.parse(localStorage.getItem("highScores")) || [];
-            highScores.push(newScore);
-            highScores.sort((a, b) => b - a); // Sort in descending order
-            if (highScores.length > 5) highScores.pop(); // Keep only top 5 scores
-            localStorage.setItem("highScores", JSON.stringify(highScores));
-        }
+        // High Scores
+        let highScores = JSON.parse(localStorage.getItem("highScores")) || [];
 
         // Start the game when the play button is clicked
         playButton.addEventListener("click", startGame);
 
         function startGame() {
-            if (!gameStarted) {
-                startScreen.style.display = "none"; // Hide title screen
-                canvas.style.display = "block"; // Show game canvas
-                gameStarted = true;
-                initMap();
-                gameLoop();
-            }
-        }
+            // Play background music
+            backgroundMusic.play().catch((error) => {
+                console.error("Error playing background music:", error);
+            });
 
-        // Initialize obstacles
-        function initMap() {
-            obstacles = [];
-            for (let i = 0; i < 6; i++) {
-                obstacles.push(generateObstacle(i * -150));
-            }
-        }
-
-        // Generate a random flying block
-        function generateObstacle(offsetY = 0) {
-            const width = Math.random() * (200 - 50) + 50; // Random width
-            const height = Math.random() * (30 - 10) + 10; // Random height
-            const x = Math.random() * (canvas.width - width); // Random x position
-            const color = randomColor(); // Assign random color
-            return { x, y: offsetY, width, height, color }; // Start above the screen
+            // Hide the start screen and show the canvas
+            startScreen.style.display = "none";
+            canvas.style.display = "block";
+            gameStarted = true;
+            initMap();
+            gameLoop();
         }
 
         // Generate a random color
@@ -167,12 +106,54 @@
             return `rgb(${r},${g},${b})`;
         }
 
+        // Generate a random flying block and check for overlap
+        function generateObstacle() {
+            const width = Math.random() * (200 - 50) + 50; // Random width
+            const height = 20; // Block height
+            let x = Math.random() * (canvas.width - width); // Random x position
+            let y = -height; // Start above the screen
+            const color = randomColor(); // Assign random color
+
+            // Check for overlap with existing blocks
+            while (obstacles.some(block => checkOverlap(x, y, width, height, block))) {
+                x = Math.random() * (canvas.width - width); // Re-generate x position
+            }
+
+            return { x, y, width, height, color };
+        }
+
+        // Check if a new block overlaps with any existing block
+        function checkOverlap(x, y, width, height, block) {
+            return !(x + width < block.x || x > block.x + block.width || y + height < block.y || y > block.y + block.height);
+        }
+
+        // Initialize obstacles
+        function initMap() {
+            obstacles = [];
+            for (let i = 0; i < 6; i++) {
+                obstacles.push(generateObstacle());
+            }
+        }
+
+        // Check collision with the ball
+        function checkCollision(ball, obstacle) {
+            return (
+                ball.y - ball.radius <= obstacle.y + obstacle.height &&
+                ball.y + ball.radius >= obstacle.y &&
+                ball.x + ball.radius >= obstacle.x &&
+                ball.x - ball.radius <= obstacle.x + obstacle.width
+            );
+        }
+
         // Main game loop
         function gameLoop() {
             if (gameOver) {
-                gameOverText.style.display = "block"; // Show game over message
-                saveHighScore(score); // Save the score to high scores
-                loadHighScores(); // Update high scores
+                ctx.fillStyle = "red";
+                ctx.font = "30px Arial";
+                ctx.fillText("Game Over! Refresh to Restart.", 150, canvas.height / 2);
+
+                // Play game over sound
+                gameOverSound.play().catch(e => console.error("Error playing game over sound:", e));
                 return;
             }
 
@@ -194,23 +175,27 @@
             if (ball.x - ball.radius < 0) {
                 ball.x = ball.radius;
                 ball.dx = -ball.dx;
+                bounceSound.play().catch(e => console.error("Error playing bounce sound:", e));
             }
             if (ball.x + ball.radius > canvas.width) {
                 ball.x = canvas.width - ball.radius;
                 ball.dx = -ball.dx;
+                bounceSound.play().catch(e => console.error("Error playing bounce sound:", e));
             }
 
             // Bounce off top and bottom
             if (ball.y - ball.radius < 0) {
                 ball.y = ball.radius;
                 ball.dy = -ball.dy;
+                bounceSound.play().catch(e => console.error("Error playing bounce sound:", e));
             }
             if (ball.y + ball.radius > canvas.height) {
                 ball.y = canvas.height - ball.radius;
                 ball.dy = -ball.dy;
+                bounceSound.play().catch(e => console.error("Error playing bounce sound:", e));
             }
 
-            // Draw obstacles
+            // Draw obstacles and check collisions
             obstacles.forEach((obstacle, index) => {
                 ctx.fillStyle = obstacle.color;
                 ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
@@ -218,7 +203,7 @@
                 // Move obstacles down
                 obstacle.y += ballSpeed;
 
-                // Check collision
+                // Check collision with the ball
                 if (checkCollision(ball, obstacle)) {
                     gameOver = true;
                 }
@@ -229,35 +214,16 @@
                 }
             });
 
-            // Increase difficulty every 20 points
-            if (score % 20 === 0 && score !== 0) {
-                ballSpeed += 0.1;
-                score++;
-            }
-
-            // Add a new obstacle every 20 points
-            if (score % 20 === 0 && score !== 0) {
-                obstacles.push(generateObstacle());
-            }
-
-            // Display score
-            scoreElement.textContent = "Score: " + score;
+            // Draw score
+            ctx.fillStyle = "white";
+            ctx.font = "24px Arial";
+            ctx.fillText("Score: " + score, 20, 30);
 
             // Request next frame
             requestAnimationFrame(gameLoop);
         }
 
-        // Check for collision with obstacles
-        function checkCollision(ball, obstacle) {
-            return (
-                ball.y - ball.radius <= obstacle.y + obstacle.height &&
-                ball.y + ball.radius >= obstacle.y &&
-                ball.x + ball.radius >= obstacle.x &&
-                ball.x - ball.radius <= obstacle.x + obstacle.width
-            );
-        }
-
-        // Handle key events
+        // Handle key events for ball movement
         document.addEventListener("keydown", (e) => {
             if (gameStarted) {
                 if (e.key === "ArrowLeft" || e.key === "a") {
@@ -286,12 +252,10 @@
         // Increase score every second
         setInterval(() => {
             if (!gameOver) {
-                score++; // Increase score every second
+                score++;
             }
         }, 1000);
 
-        // Load high scores on page load
-        loadHighScores();
     </script>
 </body>
 </html>
