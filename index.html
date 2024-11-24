@@ -4,78 +4,102 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Slope Game with Flying Blocks</title>
-
     <style>
+        /* General Body Styling */
         body {
             margin: 0;
-            overflow: hidden;
             display: flex;
-            flex-direction: column;
+            justify-content: center;
             align-items: center;
-            background-color: #111;
+            height: 100vh;
+            background-color: #222;
             color: white;
-            font-family: Arial, sans-serif;
-        }
-
-        canvas {
-            display: block;
-            margin-top: 10px;
-            border: 2px solid white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-align: center;
         }
 
         h1 {
-            margin-top: 20px;
+            font-size: 36px;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7);
         }
 
-        #difficultySelect,
+        canvas {
+            border: 4px solid #444;
+            background: #222;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+        }
+
+        /* Start Button Styling */
         #startButton {
             margin-top: 20px;
-            padding: 10px 20px;
-            font-size: 18px;
+            padding: 15px 30px;
+            font-size: 20px;
+            font-weight: bold;
             background-color: #444;
             color: white;
-            border: none;
+            border: 2px solid #888;
+            border-radius: 8px;
             cursor: pointer;
+            transition: all 0.3s ease;
         }
 
-        #difficultySelect:hover,
         #startButton:hover {
             background-color: #666;
+            border-color: #fff;
+            transform: scale(1.1);
         }
 
-        #startButton {
-            display: none; /* Hidden initially, will be shown after selecting difficulty */
+        #startButton:active {
+            background-color: #333;
+            transform: scale(1);
         }
+
+        /* Score Display */
+        #score {
+            position: absolute;
+            top: 10px;
+            left: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.7);
+        }
+
+        /* Game Over Screen */
+        #gameOverText {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 30px;
+            color: red;
+            font-weight: bold;
+            text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.7);
+        }
+
     </style>
 </head>
 <body>
-    <h1>Slope Game with Flying Blocks</h1>
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
-
-    <!-- Difficulty Select Dropdown -->
-    <select id="difficultySelect">
-        <option value="easy">Easy</option>
-        <option value="mid">Medium</option>
-        <option value="hard">Hard</option>
-    </select>
-
-    <!-- Start Button -->
-    <button id="startButton">Start Game</button>
+    <div>
+        <h1>Slope Game with Flying Blocks</h1>
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <button id="startButton">Start Game</button>
+        <div id="score">Score: 0</div>
+        <div id="gameOverText" style="display:none;">Game Over! Refresh to Restart.</div>
+    </div>
 
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
+        const startButton = document.getElementById("startButton");
+        const scoreElement = document.getElementById("score");
+        const gameOverText = document.getElementById("gameOverText");
 
-        // Game settings
         let ballSpeed = 4;
         const ball = { x: canvas.width / 2, y: canvas.height - 50, radius: 10, dx: 0, dy: -ballSpeed };
         let obstacles = [];
         let gameOver = false;
         let score = 0;
-        let gameStarted = false;
-
-        let obstacleSpeed = 4; // Default speed for obstacles
-        let obstacleFrequency = 1500; // Default frequency for obstacles
 
         // Create audio objects
         const backgroundMusic = new Audio("music-no-copyright-239544.mp3");
@@ -86,44 +110,22 @@
         backgroundMusic.loop = true;
         backgroundMusic.volume = 0.5;
 
-        // Difficulty select event
-        document.getElementById("difficultySelect").addEventListener("change", function() {
-            const difficulty = this.value;
+        // Start the game and play background music when the user clicks the Start button
+        let gameStarted = false;
 
-            // Adjust difficulty settings based on the selected value
-            if (difficulty === "easy") {
-                obstacleSpeed = 2;
-                obstacleFrequency = 2000;
-            } else if (difficulty === "mid") {
-                obstacleSpeed = 4;
-                obstacleFrequency = 1500;
-            } else if (difficulty === "hard") {
-                obstacleSpeed = 6;
-                obstacleFrequency = 1000;
-            }
-
-            // Show the start button after selecting difficulty
-            document.getElementById("startButton").style.display = "inline-block";
-        });
-
-        // Start the game when the button is clicked
-        document.getElementById("startButton").addEventListener("click", startGame);
+        // Start the game and music when the button is clicked
+        startButton.addEventListener("click", startGame);
 
         function startGame() {
             if (!gameStarted) {
-                // Start background music
+                // Start the background music when the game starts
                 backgroundMusic.play().catch(e => {
                     console.error("Error playing background music:", e);
                 });
-
-                // Hide difficulty selector and start button
-                document.getElementById("difficultySelect").style.display = "none";
-                document.getElementById("startButton").style.display = "none";
-
-                // Start game loop
                 gameStarted = true;
                 initMap();
                 gameLoop();
+                startButton.style.display = "none"; // Hide the start button after starting the game
             }
         }
 
@@ -137,11 +139,11 @@
 
         // Generate a random flying block
         function generateObstacle() {
-            const width = Math.random() * (200 - 50) + 50;
-            const height = 20;
-            const x = Math.random() * (canvas.width - width);
-            const color = randomColor();
-            return { x, y: -height, width, height, color };
+            const width = Math.random() * (200 - 50) + 50; // Random width
+            const height = 20; // Block height
+            const x = Math.random() * (canvas.width - width); // Random x position
+            const color = randomColor(); // Assign random color
+            return { x, y: -height, width, height, color }; // Start above the screen
         }
 
         // Initialize obstacles
@@ -150,13 +152,6 @@
             for (let i = 0; i < 6; i++) {
                 obstacles.push({ ...generateObstacle(), y: i * -150 });
             }
-
-            // Set interval to generate new obstacles based on the frequency
-            setInterval(() => {
-                if (!gameOver) {
-                    obstacles.push(generateObstacle());
-                }
-            }, obstacleFrequency);
         }
 
         // Check collision
@@ -172,10 +167,7 @@
         // Main game loop
         function gameLoop() {
             if (gameOver) {
-                ctx.fillStyle = "red";
-                ctx.font = "30px Arial";
-                ctx.fillText("Game Over! Refresh to Restart.", 150, canvas.height / 2);
-
+                gameOverText.style.display = "block"; // Show game over message
                 // Play game over sound
                 gameOverSound.play().catch(e => {
                     console.error("Error playing game over sound:", e);
@@ -231,13 +223,13 @@
 
             // Draw obstacles
             obstacles.forEach((obstacle, index) => {
-                ctx.fillStyle = obstacle.color;
+                ctx.fillStyle = obstacle.color; // Use random color
                 ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
 
-                // Move obstacles down based on the difficulty
-                obstacle.y += obstacleSpeed;
+                // Move obstacles down
+                obstacle.y += ballSpeed;
 
-                // Check for collisions with obstacles
+                // Check collision
                 if (checkCollision(ball, obstacle)) {
                     gameOver = true;
                 }
@@ -248,13 +240,8 @@
                 }
             });
 
-            // Draw score
-            ctx.fillStyle = "white";
-            ctx.font = "24px Arial";
-            ctx.fillText("Score: " + score, 20, 30);
-
-            // Increase score every second
-            score++;
+            // Update and display score
+            scoreElement.textContent = `Score: ${score}`;
 
             // Request next frame
             requestAnimationFrame(gameLoop);
@@ -272,10 +259,12 @@
                 if (e.key === "ArrowUp") {
                     ballSpeed = Math.min(ballSpeed + 0.5, 10);
                     ball.dy = -ballSpeed;
+                    console.log("Increased speed:", ballSpeed);
                 }
                 if (e.key === "ArrowDown") {
                     ballSpeed = Math.max(ballSpeed - 0.5, 2);
                     ball.dy = -ballSpeed;
+                    console.log("Decreased speed:", ballSpeed);
                 }
             }
         });
@@ -285,6 +274,13 @@
                 ball.dx = 0;
             }
         });
+
+        // Increase score every second
+        setInterval(() => {
+            if (!gameOver) {
+                score++; // Increase score every second
+            }
+        }, 1000);
     </script>
 </body>
 </html>
