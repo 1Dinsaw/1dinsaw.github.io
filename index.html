@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ball Dinsaw</title>
-
     <style>
         body {
             margin: 0;
@@ -17,8 +16,6 @@
             color: white;
             font-family: Arial, sans-serif;
             height: 100vh;
-            display: flex;
-            justify-content: center;
         }
 
         canvas {
@@ -32,17 +29,17 @@
         }
 
         #startButton {
-            margin-top: 20px;
-            padding: 10px 20px;
-            font-size: 18px;
-            background-color: #444;
-            color: white;
+            width: 100px;
+            height: 100px;
+            background: url('play-button-7426443_640.png') no-repeat center center;
+            background-size: cover;
             border: none;
             cursor: pointer;
+            margin-top: 20px;
         }
 
         #startButton:hover {
-            background-color: #666;
+            filter: brightness(1.2);
         }
 
         #backToTitleButton {
@@ -64,7 +61,7 @@
 <body>
     <h1>Ball Dinsaw</h1>
     <canvas id="gameCanvas" width="800" height="600"></canvas>
-    <button id="startButton">Start Game</button>
+    <button id="startButton"></button>
     <button id="backToTitleButton">Back to Title Screen</button>
 
     <script>
@@ -75,11 +72,13 @@
         const ball = { x: canvas.width / 2, y: canvas.height - 50, radius: 10, dx: 0, dy: -ballSpeed };
         let obstacles = [];
         let gameOver = false;
+        let gameOverSoundPlayed = false;
         let score = 0;
 
+        // Update file paths for sounds
         const backgroundMusic = new Audio("music-no-copyright-239544.mp3");
-        const bounceSound = new Audio("boing-2-44164.mp3"); // Updated bounce sound
-        const gameOverSound = new Audio("gameOver.mp3");
+        const bounceSound = new Audio("boing-2-44164.mp3");
+        const gameOverSound = new Audio("kl-peach-game-over-ii-135684.mp3"); // New game over sound
 
         backgroundMusic.loop = true;
         backgroundMusic.volume = 0.5;
@@ -102,6 +101,7 @@
 
         function resetGame() {
             gameOver = false;
+            gameOverSoundPlayed = false;
             score = 0;
             ball.x = canvas.width / 2;
             ball.y = canvas.height - 50;
@@ -149,11 +149,13 @@
 
         function gameLoop() {
             if (gameOver) {
+                if (!gameOverSoundPlayed) {
+                    gameOverSound.play().catch(e => console.error(e)); // Play the new game over sound
+                    gameOverSoundPlayed = true;
+                }
                 ctx.fillStyle = "red";
                 ctx.font = "30px Arial";
                 ctx.fillText("Game Over! Click 'Back to Title Screen'.", 150, canvas.height / 2);
-
-                gameOverSound.play().catch(e => console.error(e));
                 document.getElementById("backToTitleButton").style.display = "inline";
                 return;
             }
