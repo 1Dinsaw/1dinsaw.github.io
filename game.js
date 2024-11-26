@@ -9,6 +9,7 @@ let gameOverSoundPlayed = false;
 let score = 0;
 let highScores = JSON.parse(localStorage.getItem("highScores")) || [];
 
+// Sounds
 const backgroundMusic = new Audio("music-no-copyright-239544.mp3");
 const bounceSound = new Audio("boing-2-44164.mp3");
 const gameOverSound = new Audio("kl-peach-game-over-ii-135684.mp3");
@@ -18,7 +19,7 @@ backgroundMusic.volume = 0.5;
 
 let gameStarted = false;
 
-// Elements
+// UI Elements
 const titleScreen = document.getElementById("titleScreen");
 const gameScreen = document.getElementById("gameScreen");
 const scoresList = document.getElementById("scoresList");
@@ -29,23 +30,23 @@ const startButton = document.getElementById("startButton");
 startButton.addEventListener("click", startGame);
 backToTitleButton.addEventListener("click", returnToTitleScreen);
 
-// Initialize High Scores Display
+// Display High Scores
 function displayHighScores() {
     scoresList.innerHTML = highScores
         .map((score, index) => `<li>${index + 1}. ${score}</li>`)
         .join("");
 }
 
+// Return to Title Screen
 function returnToTitleScreen() {
-    // Save score if game ended
     if (gameOver) {
+        // Save high score
         highScores.push(score);
-        highScores.sort((a, b) => b - a); // Sort scores descending
-        highScores = highScores.slice(0, 5); // Keep top 5 scores
+        highScores.sort((a, b) => b - a);
+        highScores = highScores.slice(0, 5);
         localStorage.setItem("highScores", JSON.stringify(highScores));
     }
 
-    gameOver = false;
     resetGame();
 
     titleScreen.style.display = "flex";
@@ -54,6 +55,7 @@ function returnToTitleScreen() {
     displayHighScores();
 }
 
+// Start Game
 function startGame() {
     titleScreen.style.display = "none";
     gameScreen.style.display = "flex";
@@ -66,6 +68,7 @@ function startGame() {
     }
 }
 
+// Reset Game
 function resetGame() {
     gameOver = false;
     gameOverSoundPlayed = false;
@@ -87,6 +90,23 @@ function resetGame() {
     backToTitleButton.style.display = "none";
 }
 
+// Initialize Map
+function initMap() {
+    obstacles = [];
+    for (let i = 0; i < 6; i++) {
+        obstacles.push(generateObstacle(i * -150));
+    }
+}
+
+// Generate Obstacle
+function generateObstacle(y) {
+    const width = Math.random() * (200 - 50) + 50;
+    const height = 20;
+    const x = Math.random() * (canvas.width - width);
+    return { x, y, width, height, color: randomColor() };
+}
+
+// Random Color
 function randomColor() {
     const r = Math.floor(Math.random() * 256);
     const g = Math.floor(Math.random() * 256);
@@ -94,21 +114,7 @@ function randomColor() {
     return `rgb(${r},${g},${b})`;
 }
 
-function generateObstacle() {
-    const width = Math.random() * (200 - 50) + 50;
-    const height = 20;
-    const x = Math.random() * (canvas.width - width);
-    const color = randomColor();
-    return { x, y: -height, width, height, color };
-}
-
-function initMap() {
-    obstacles = [];
-    for (let i = 0; i < 6; i++) {
-        obstacles.push({ ...generateObstacle(), y: i * -150 });
-    }
-}
-
+// Check Collision
 function checkCollision(ball, rect) {
     return (
         ball.y - ball.radius <= rect.y + rect.height &&
@@ -118,6 +124,7 @@ function checkCollision(ball, rect) {
     );
 }
 
+// Game Loop
 function gameLoop() {
     if (gameOver) {
         if (!gameOverSoundPlayed) {
@@ -133,14 +140,14 @@ function gameLoop() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw the ball
+    // Draw Ball
     ctx.fillStyle = "lime";
     ctx.beginPath();
     ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
     ctx.fill();
     ctx.closePath();
 
-    // Update ball position
+    // Update Ball Position
     ball.x += ball.dx;
     ball.y += ball.dy;
 
@@ -154,7 +161,7 @@ function gameLoop() {
         bounceSound.play().catch(e => console.error(e));
     }
 
-    // Draw obstacles
+    // Draw Obstacles
     obstacles.forEach((obstacle, index) => {
         ctx.fillStyle = obstacle.color;
         ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
@@ -166,48 +173,9 @@ function gameLoop() {
         }
 
         if (obstacle.y > canvas.height) {
-            obstacles[index] = generateObstacle();
+            obstacles[index] = generateObstacle(-20);
         }
     });
 
     ctx.fillStyle = "white";
-    ctx.font = "24px Arial";
-    ctx.fillText("Score: " + score, 20, 30);
-
-    requestAnimationFrame(gameLoop);
-}
-
-document.addEventListener("keydown", (e) => {
-    if (gameStarted) {
-        if (e.key === "ArrowLeft" || e.key === "a") {
-            ball.dx = -ballSpeed / 2;
-        }
-        if (e.key === "ArrowRight" || e.key === "d") {
-            ball.dx = ballSpeed / 2;
-        }
-        if (e.key === "ArrowUp") {
-            ballSpeed = Math.min(ballSpeed + 0.5, 10);
-            ball.dy = -ballSpeed;
-        }
-        if (e.key === "ArrowDown") {
-            ballSpeed = Math.max(ballSpeed - 0.5, 2);
-            ball.dy = -ballSpeed;
-        }
-    }
-});
-
-document.addEventListener("keyup", (e) => {
-    if (e.key === "ArrowLeft" || e.key === "a" || e.key === "ArrowRight" || e.key === "d") {
-        ball.dx = 0;
-    }
-});
-
-setInterval(() => {
-    if (!gameOver) {
-        score++;
-    }
-}, 1000);
-
-// Initialize the title screen
-displayHighScores();
-titleScreen.style.display = "flex";
+    ctx.font = "24px Arial";   
