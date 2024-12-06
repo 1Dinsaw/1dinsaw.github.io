@@ -138,8 +138,9 @@
 
             resetGame(); // Ensure everything is reset before starting
 
+            backgroundMusic.play().catch(e => console.error(e));
+
             if (!gameStarted) {
-                backgroundMusic.play().catch(e => console.error(e));
                 gameStarted = true;
                 initMap();
                 gameLoop();
@@ -148,6 +149,7 @@
 
         // Reset Game
         function resetGame() {
+            // Reset all game variables
             gameOver = false;
             gameOverSoundPlayed = false;
             score = 0;
@@ -217,6 +219,7 @@
                 setTimeout(() => {
                     titleScreen.style.display = "flex";
                     gameScreen.style.display = "none";
+                    resetGame(); // Reset game variables
                 }, 2000);
                 return;
             }
