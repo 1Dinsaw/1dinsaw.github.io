@@ -68,21 +68,6 @@
             filter: brightness(1.2);
         }
 
-        #backToTitleButton {
-            margin-top: 20px;
-            padding: 10px 20px;
-            font-size: 18px;
-            background-color: #444;
-            color: white;
-            border: none;
-            cursor: pointer;
-            display: none;
-        }
-
-        #backToTitleButton:hover {
-            background-color: #666;
-        }
-
         /* Canvas */
         canvas {
             display: block;
@@ -105,7 +90,6 @@
     <!-- Game Screen -->
     <div id="gameScreen">
         <canvas id="gameCanvas" width="800" height="600"></canvas>
-        <button id="backToTitleButton">Back to Title Screen</button>
     </div>
 
     <script>
@@ -134,12 +118,10 @@
         const titleScreen = document.getElementById("titleScreen");
         const gameScreen = document.getElementById("gameScreen");
         const scoresList = document.getElementById("scoresList");
-        const backToTitleButton = document.getElementById("backToTitleButton");
         const startButton = document.getElementById("startButton");
 
         // Event Listeners
         startButton.addEventListener("click", startGame);
-        backToTitleButton.addEventListener("click", returnToTitleScreen);
 
         // Display High Scores
         function displayHighScores() {
@@ -149,29 +131,12 @@
                 .join("");
         }
 
-        // Return to Title Screen
-        function returnToTitleScreen() {
-            if (gameOver) {
-                // Save high score
-                highScores.push(score);
-                highScores.sort((a, b) => b - a);
-                highScores = highScores.slice(0, 5); // Keep top 5 scores
-                localStorage.setItem("highScores", JSON.stringify(highScores));
-            }
-
-            // Reset game and UI
-            resetGame();
-
-            titleScreen.style.display = "flex";
-            gameScreen.style.display = "none";
-
-            displayHighScores();
-        }
-
         // Start Game
         function startGame() {
             titleScreen.style.display = "none";
             gameScreen.style.display = "flex";
+
+            resetGame(); // Ensure everything is reset before starting
 
             if (!gameStarted) {
                 backgroundMusic.play().catch(e => console.error(e));
@@ -200,7 +165,7 @@
             gameOverSound.pause();
             gameOverSound.currentTime = 0;
 
-            backToTitleButton.style.display = "none";
+            displayHighScores();
         }
 
         // Initialize Map
@@ -246,8 +211,13 @@
                 }
                 ctx.fillStyle = "red";
                 ctx.font = "30px Arial";
-                ctx.fillText("Game Over! Returning to Title Screen...", 150, canvas.height / 2);
-                backToTitleButton.style.display = "inline";
+                ctx.fillText("Game Over! Restarting...", 200, canvas.height / 2);
+
+                // Restart the game after displaying the game over message
+                setTimeout(() => {
+                    titleScreen.style.display = "flex";
+                    gameScreen.style.display = "none";
+                }, 2000);
                 return;
             }
 
@@ -283,6 +253,12 @@
 
                 if (checkCollision(ball, obstacle)) {
                     gameOver = true;
+
+                    // Save high score
+                    highScores.push(score);
+                    highScores.sort((a, b) => b - a);
+                    highScores = highScores.slice(0, 5); // Keep top 5 scores
+                    localStorage.setItem("highScores", JSON.stringify(highScores));
                 }
 
                 if (obstacle.y > canvas.height) {
