@@ -208,6 +208,12 @@
                 ctx.font = "30px Arial";
                 ctx.fillText("Game Over! Restarting...", 200, canvas.height / 2);
 
+                // Save high score after game ends
+                highScores.push(score);
+                highScores.sort((a, b) => b - a);
+                highScores = highScores.slice(0, 5);
+                localStorage.setItem("highScores", JSON.stringify(highScores));
+
                 setTimeout(restartGame, 2000); // Restart the game after 2 seconds
                 return;
             }
@@ -241,11 +247,6 @@
 
                 if (checkCollision(ball, obstacle)) {
                     gameOver = true;
-
-                    highScores.push(score);
-                    highScores.sort((a, b) => b - a);
-                    highScores = highScores.slice(0, 5);
-                    localStorage.setItem("highScores", JSON.stringify(highScores));
                 }
 
                 if (obstacle.y > canvas.height) {
@@ -280,7 +281,7 @@
         });
 
         setInterval(() => {
-            if (!gameOver) score++;
+            if (!gameOver && gameStarted) score++;
         }, 1000);
 
         displayHighScores();
