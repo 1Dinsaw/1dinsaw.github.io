@@ -104,76 +104,33 @@
         let score = 0;
         let highScores = JSON.parse(localStorage.getItem("highScores")) || [];
 
-        // Updated Game-Over Sound
         const backgroundMusic = new Audio("music-no-copyright-239544.mp3");
         const bounceSound = new Audio("boing-2-44164.mp3");
-        const gameOverSound = new Audio("mixkit-retro-arcade-game-over-470.wav"); // New game-over sound
+        const gameOverSound = new Audio("mixkit-retro-arcade-game-over-470.wav");
 
         backgroundMusic.loop = true;
         backgroundMusic.volume = 0.5;
 
         let gameStarted = false;
 
-        // UI Elements
         const titleScreen = document.getElementById("titleScreen");
         const gameScreen = document.getElementById("gameScreen");
         const scoresList = document.getElementById("scoresList");
         const startButton = document.getElementById("startButton");
 
-        // Event Listeners
         startButton.addEventListener("click", startGame);
 
-        // Display High Scores
         function displayHighScores() {
             scoresList.innerHTML = highScores
-                .slice(0, 5) // Show only top 5 scores
+                .slice(0, 5)
                 .map((score, index) => `<li>${index + 1}. ${score}</li>`)
                 .join("");
         }
 
-        // Start Game
-        function startGame() {
-    // Ensure the title screen is hidden and the game screen is shown
-    titleScreen.style.display = "none";
-    gameScreen.style.display = "flex";
-
-    // Reset game state
-    gameOver = false;             // Disable the gameOver flag
-    gameOverSoundPlayed = false;  // Ensure gameOver sound can play again if needed
-    score = 0;                    // Reset the score
-    ball.x = canvas.width / 2;    // Reset the ball position
-    ball.y = canvas.height - 50;
-    ball.dx = 0;                  // Reset ball movement
-    ball.dy = -ballSpeed;
-    obstacles = [];               // Clear all obstacles
-
-    // Stop all sounds and reset them
-    backgroundMusic.pause();
-    backgroundMusic.currentTime = 0;
-    bounceSound.pause();
-    bounceSound.currentTime = 0;
-    gameOverSound.pause();
-    gameOverSound.currentTime = 0;
-
-    // Restart the background music
-    backgroundMusic.play().catch(e => console.error(e));
-
-    // Reinitialize game components
-    initMap();
-
-    // Start the game loop if not already running
-    if (!gameStarted) {
-        gameStarted = true;
-        gameLoop();
-    }
-}
-
-        
-
-        // Reset Game
-        function resetGame() {
-            // Reset all game variables
+        function restartGame() {
+            // Reset game state
             gameOver = false;
+            gameStarted = false;
             gameOverSoundPlayed = false;
             score = 0;
             ball.x = canvas.width / 2;
@@ -190,10 +147,27 @@
             gameOverSound.pause();
             gameOverSound.currentTime = 0;
 
+            // Reset UI
+            titleScreen.style.display = "flex";
+            gameScreen.style.display = "none";
+
+            // Reinitialize game components
+            initMap();
             displayHighScores();
         }
 
-        // Initialize Map
+        function startGame() {
+            titleScreen.style.display = "none";
+            gameScreen.style.display = "flex";
+
+            if (!gameStarted) {
+                backgroundMusic.play().catch(e => console.error(e));
+                gameStarted = true;
+                initMap();
+                gameLoop();
+            }
+        }
+
         function initMap() {
             obstacles = [];
             for (let i = 0; i < 6; i++) {
@@ -201,7 +175,6 @@
             }
         }
 
-        // Generate Obstacle
         function generateObstacle(y) {
             const width = Math.random() * (200 - 50) + 50;
             const height = 20;
@@ -209,7 +182,6 @@
             return { x, y, width, height, color: randomColor() };
         }
 
-        // Random Color
         function randomColor() {
             const r = Math.floor(Math.random() * 256);
             const g = Math.floor(Math.random() * 256);
@@ -217,7 +189,6 @@
             return `rgb(${r},${g},${b})`;
         }
 
-        // Check Collision
         function checkCollision(ball, rect) {
             return (
                 ball.y - ball.radius <= rect.y + rect.height &&
@@ -227,7 +198,6 @@
             );
         }
 
-        // Game Loop
         function gameLoop() {
             if (gameOver) {
                 if (!gameOverSoundPlayed) {
@@ -238,25 +208,18 @@
                 ctx.font = "30px Arial";
                 ctx.fillText("Game Over! Restarting...", 200, canvas.height / 2);
 
-                // Restart the game after displaying the game over message
-                setTimeout(() => {
-                    titleScreen.style.display = "flex";
-                    gameScreen.style.display = "none";
-                    resetGame(); // Reset game variables
-                }, 2000);
+                setTimeout(restartGame, 2000); // Restart the game after 2 seconds
                 return;
             }
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Draw Ball
             ctx.fillStyle = "lime";
             ctx.beginPath();
             ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
             ctx.fill();
             ctx.closePath();
 
-            // Update Ball Position
             ball.x += ball.dx;
             ball.y += ball.dy;
 
@@ -270,7 +233,6 @@
                 bounceSound.play().catch(e => console.error(e));
             }
 
-            // Draw Obstacles
             obstacles.forEach((obstacle, index) => {
                 ctx.fillStyle = obstacle.color;
                 ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
@@ -280,10 +242,9 @@
                 if (checkCollision(ball, obstacle)) {
                     gameOver = true;
 
-                    // Save high score
                     highScores.push(score);
                     highScores.sort((a, b) => b - a);
-                    highScores = highScores.slice(0, 5); // Keep top 5 scores
+                    highScores = highScores.slice(0, 5);
                     localStorage.setItem("highScores", JSON.stringify(highScores));
                 }
 
@@ -299,7 +260,6 @@
             requestAnimationFrame(gameLoop);
         }
 
-        // Key Events
         document.addEventListener("keydown", (e) => {
             if (gameStarted) {
                 if (e.key === "ArrowLeft" || e.key === "a") ball.dx = -ballSpeed / 2;
@@ -319,12 +279,10 @@
             if (e.key === "ArrowLeft" || e.key === "a" || e.key === "ArrowRight" || e.key === "d") ball.dx = 0;
         });
 
-        // Increment Score
         setInterval(() => {
             if (!gameOver) score++;
         }, 1000);
 
-        // Display High Scores Initially
         displayHighScores();
         titleScreen.style.display = "flex";
     </script>
