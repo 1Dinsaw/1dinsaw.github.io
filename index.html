@@ -175,30 +175,31 @@
         }
 
         function setupControls() {
+            // Hide mobile controls on PC
             if (isMobileDevice()) {
                 mobileControls.style.display = "flex";
-                leftButton.addEventListener("mousedown", () => (ball.dx = -ballSpeed));
-                rightButton.addEventListener("mousedown", () => (ball.dx = ballSpeed));
+
+                // Mobile button listeners
+                leftButton.addEventListener("mousedown", () => ball.dx = -ballSpeed);
+                rightButton.addEventListener("mousedown", () => ball.dx = ballSpeed);
                 upButton.addEventListener("mousedown", () => ball.dy = -ballSpeed);
                 downButton.addEventListener("mousedown", () => ball.dy = ballSpeed);
 
-                // Reset movement on button release
-                [leftButton, rightButton, upButton, downButton].forEach((button) =>
-                    button.addEventListener("mouseup", () => {
-                        ball.dx = 0;
-                        ball.dy = -ballSpeed;
-                    })
+                [leftButton, rightButton, upButton, downButton].forEach(button => 
+                    button.addEventListener("mouseup", () => ball.dx = 0)
                 );
             } else {
-                // Desktop controls
-                document.addEventListener("keydown", (e) => {
+                mobileControls.style.display = "none";
+
+                // PC Keyboard listeners
+                document.addEventListener("keydown", e => {
                     if (e.key === "ArrowLeft" || e.key === "a") ball.dx = -ballSpeed;
                     if (e.key === "ArrowRight" || e.key === "d") ball.dx = ballSpeed;
                     if (e.key === "ArrowUp") ball.dy = -ballSpeed;
                     if (e.key === "ArrowDown") ball.dy = ballSpeed;
                 });
 
-                document.addEventListener("keyup", (e) => {
+                document.addEventListener("keyup", e => {
                     if (["ArrowLeft", "ArrowRight", "a", "d"].includes(e.key)) ball.dx = 0;
                 });
             }
@@ -231,14 +232,14 @@
 
         function gameLoop() {
             if (gameOver) {
-                gameOverSound.play().catch((e) => console.error(e));
+                gameOverSound.play().catch(e => console.error(e));
                 setTimeout(restartGame, 2000);
                 return;
             }
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Draw ball
+            // Draw the ball
             ctx.fillStyle = "lime";
             ctx.beginPath();
             ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
@@ -248,15 +249,25 @@
             ball.x += ball.dx;
             ball.y += ball.dy;
 
-            if (ball.x - ball.radius < 0 || ball.x + ball.radius > canvas.width) ball.dx = -ball.dx;
-            if (ball.y - ball.radius < 0 || ball.y + ball.radius > canvas.height) ball.dy = -ball.dy;
+            // Move obstacles
+            obstacles.forEach((obstacle, index) => {
+                ctx.fillStyle = obstacle.color;
+                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+
+                obstacle.y += ballSpeed;
+
+                // Recycle obstacle
+                if (obstacle.y > canvas.height) {
+                    obstacles[index] = generateObstacle(-20);
+                }
+            });
 
             requestAnimationFrame(gameLoop);
         }
 
         function restartGame() {
             gameOver = false;
-            isPlaying = false; // Stop score updates
+            isPlaying = false;
             score = 0;
 
             ball.x = canvas.width / 2;
@@ -269,10 +280,6 @@
 
             displayHighScores();
         }
-
-        setInterval(() => {
-            if (isPlaying) score++;
-        }, 1000);
 
         function displayHighScores() {
             scoresList.innerHTML = highScores
