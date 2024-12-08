@@ -74,6 +74,33 @@
             margin-top: 10px;
             border: none;
         }
+
+        /* Touch Controls */
+        .touch-controls {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            position: absolute;
+            bottom: 10px;
+        }
+
+        .touch-button {
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 24px;
+            font-weight: bold;
+            color: black;
+        }
+
+        .touch-button:active {
+            background: rgba(255, 255, 255, 0.8);
+        }
     </style>
 </head>
 <body>
@@ -89,12 +116,25 @@
 
     <!-- Game Screen -->
     <div id="gameScreen">
-        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <canvas id="gameCanvas"></canvas>
+        <div class="touch-controls">
+            <div class="touch-button" id="leftButton">◀</div>
+            <div class="touch-button" id="upButton">▲</div>
+            <div class="touch-button" id="rightButton">▶</div>
+        </div>
     </div>
 
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
+
+        // Make the canvas responsive
+        function resizeCanvas() {
+            canvas.width = window.innerWidth * 0.9;
+            canvas.height = window.innerHeight * 0.8;
+        }
+        window.addEventListener("resize", resizeCanvas);
+        resizeCanvas();
 
         let ballSpeed = 4;
         const ball = { x: canvas.width / 2, y: canvas.height - 50, radius: 10, dx: 0, dy: -ballSpeed };
@@ -120,6 +160,23 @@
 
         startButton.addEventListener("click", startGame);
 
+        const leftButton = document.getElementById("leftButton");
+        const rightButton = document.getElementById("rightButton");
+        const upButton = document.getElementById("upButton");
+
+        // Touch controls
+        leftButton.addEventListener("touchstart", () => (ball.dx = -ballSpeed / 2));
+        rightButton.addEventListener("touchstart", () => (ball.dx = ballSpeed / 2));
+        upButton.addEventListener("touchstart", () => {
+            ballSpeed = Math.min(ballSpeed + 0.5, 10);
+            ball.dy = -ballSpeed;
+        });
+
+        // Stop movement when touch ends
+        [leftButton, rightButton].forEach(button =>
+            button.addEventListener("touchend", () => (ball.dx = 0))
+        );
+
         function displayHighScores() {
             scoresList.innerHTML = highScores
                 .slice(0, 5)
@@ -128,7 +185,6 @@
         }
 
         function restartGame() {
-            // Reset game state
             gameOver = false;
             gameStarted = false;
             gameOverSoundPlayed = false;
@@ -139,19 +195,12 @@
             ball.dy = -ballSpeed;
             obstacles = [];
 
-            // Stop all sounds
             backgroundMusic.pause();
             backgroundMusic.currentTime = 0;
-            bounceSound.pause();
-            bounceSound.currentTime = 0;
-            gameOverSound.pause();
-            gameOverSound.currentTime = 0;
 
-            // Reset UI
             titleScreen.style.display = "flex";
             gameScreen.style.display = "none";
 
-            // Reinitialize game components
             initMap();
             displayHighScores();
         }
@@ -176,7 +225,7 @@
         }
 
         function generateObstacle(y) {
-            const width = Math.random() * (200 - 50) + 50;
+            const width = Math.random() * (canvas.width / 2 - 50) + 50;
             const height = 20;
             const x = Math.random() * (canvas.width - width);
             return { x, y, width, height, color: randomColor() };
@@ -189,15 +238,6 @@
             return `rgb(${r},${g},${b})`;
         }
 
-        function checkCollision(ball, rect) {
-            return (
-                ball.y - ball.radius <= rect.y + rect.height &&
-                ball.y + ball.radius >= rect.y &&
-                ball.x + ball.radius >= rect.x &&
-                ball.x - ball.radius <= rect.x + rect.width
-            );
-        }
-
         function gameLoop() {
             if (gameOver) {
                 if (!gameOverSoundPlayed) {
@@ -206,15 +246,9 @@
                 }
                 ctx.fillStyle = "red";
                 ctx.font = "30px Arial";
-                ctx.fillText("Game Over! Restarting...", 200, canvas.height / 2);
+                ctx.fillText("Game Over! Restarting...", canvas.width / 4, canvas.height / 2);
 
-                // Save high score after game ends
-                highScores.push(score);
-                highScores.sort((a, b) => b - a);
-                highScores = highScores.slice(0, 5);
-                localStorage.setItem("highScores", JSON.stringify(highScores));
-
-                setTimeout(restartGame, 2000); // Restart the game after 2 seconds
+                setTimeout(restartGame, 2000);
                 return;
             }
 
@@ -245,8 +279,18 @@
 
                 obstacle.y += ballSpeed;
 
-                if (checkCollision(ball, obstacle)) {
+                if (
+                    ball.y - ball.radius <= obstacle.y + obstacle.height &&
+                    ball.y + ball.radius >= obstacle.y &&
+                    ball.x + ball.radius >= obstacle.x &&
+                    ball.x - ball.radius <= obstacle.x + obstacle.width
+                ) {
                     gameOver = true;
+
+                    highScores.push(score);
+                    highScores.sort((a, b) => b - a);
+                    highScores = highScores.slice(0, 5);
+                    localStorage.setItem("highScores", JSON.stringify(highScores));
                 }
 
                 if (obstacle.y > canvas.height) {
@@ -260,25 +304,6 @@
 
             requestAnimationFrame(gameLoop);
         }
-
-        document.addEventListener("keydown", (e) => {
-            if (gameStarted) {
-                if (e.key === "ArrowLeft" || e.key === "a") ball.dx = -ballSpeed / 2;
-                if (e.key === "ArrowRight" || e.key === "d") ball.dx = ballSpeed / 2;
-                if (e.key === "ArrowUp") {
-                    ballSpeed = Math.min(ballSpeed + 0.5, 10);
-                    ball.dy = -ballSpeed;
-                }
-                if (e.key === "ArrowDown") {
-                    ballSpeed = Math.max(ballSpeed - 0.5, 2);
-                    ball.dy = -ballSpeed;
-                }
-            }
-        });
-
-        document.addEventListener("keyup", (e) => {
-            if (e.key === "ArrowLeft" || e.key === "a" || e.key === "ArrowRight" || e.key === "d") ball.dx = 0;
-        });
 
         setInterval(() => {
             if (!gameOver && gameStarted) score++;
