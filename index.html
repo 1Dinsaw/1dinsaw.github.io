@@ -74,35 +74,6 @@
             margin-top: 10px;
             border: none;
         }
-
-        /* Mobile Controls */
-        #mobileControls {
-            display: none;
-            position: fixed;
-            bottom: 20px;
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        .control-button {
-            width: 60px;
-            height: 60px;
-            background-color: #444;
-            color: white;
-            border: none;
-            font-size: 18px;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-        }
-
-        .control-button:active {
-            background-color: #666;
-        }
     </style>
 </head>
 <body>
@@ -119,31 +90,18 @@
     <!-- Game Screen -->
     <div id="gameScreen">
         <canvas id="gameCanvas" width="800" height="600"></canvas>
-        <div id="mobileControls">
-            <button class="control-button" id="leftButton">←</button>
-            <button class="control-button" id="upButton">↑</button>
-            <button class="control-button" id="downButton">↓</button>
-            <button class="control-button" id="rightButton">→</button>
-        </div>
     </div>
 
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
 
-        const mobileControls = document.getElementById("mobileControls");
-        const leftButton = document.getElementById("leftButton");
-        const rightButton = document.getElementById("rightButton");
-        const upButton = document.getElementById("upButton");
-        const downButton = document.getElementById("downButton");
-
         let ballSpeed = 4;
         const ball = { x: canvas.width / 2, y: canvas.height - 50, radius: 10, dx: 0, dy: -ballSpeed };
         let obstacles = [];
-        let score = 0;
-        let isPlaying = false;
         let gameOver = false;
-
+        let gameOverSoundPlayed = false;
+        let score = 0;
         let highScores = JSON.parse(localStorage.getItem("highScores")) || [];
 
         const backgroundMusic = new Audio("music-no-copyright-239544.mp3");
@@ -153,6 +111,8 @@
         backgroundMusic.loop = true;
         backgroundMusic.volume = 0.5;
 
+        let gameStarted = false;
+
         const titleScreen = document.getElementById("titleScreen");
         const gameScreen = document.getElementById("gameScreen");
         const scoresList = document.getElementById("scoresList");
@@ -160,53 +120,52 @@
 
         startButton.addEventListener("click", startGame);
 
+        function displayHighScores() {
+            scoresList.innerHTML = highScores
+                .slice(0, 5)
+                .map((score, index) => `<li>${index + 1}. ${score}</li>`)
+                .join("");
+        }
+
+        function restartGame() {
+            // Reset game state
+            gameOver = false;
+            gameStarted = false;
+            gameOverSoundPlayed = false;
+            score = 0;
+            ball.x = canvas.width / 2;
+            ball.y = canvas.height - 50;
+            ball.dx = 0;
+            ball.dy = -ballSpeed;
+            obstacles = [];
+
+            // Stop all sounds
+            backgroundMusic.pause();
+            backgroundMusic.currentTime = 0;
+            bounceSound.pause();
+            bounceSound.currentTime = 0;
+            gameOverSound.pause();
+            gameOverSound.currentTime = 0;
+
+            // Reset UI
+            titleScreen.style.display = "flex";
+            gameScreen.style.display = "none";
+
+            // Reinitialize game components
+            initMap();
+            displayHighScores();
+        }
+
         function startGame() {
             titleScreen.style.display = "none";
             gameScreen.style.display = "flex";
 
-            isPlaying = true; // Start gameplay
-            setupControls();
-
-            if (!gameOver) {
+            if (!gameStarted) {
                 backgroundMusic.play().catch(e => console.error(e));
+                gameStarted = true;
                 initMap();
                 gameLoop();
             }
-        }
-
-        function setupControls() {
-            // Hide mobile controls on PC
-            if (isMobileDevice()) {
-                mobileControls.style.display = "flex";
-
-                // Mobile button listeners
-                leftButton.addEventListener("mousedown", () => ball.dx = -ballSpeed);
-                rightButton.addEventListener("mousedown", () => ball.dx = ballSpeed);
-                upButton.addEventListener("mousedown", () => ball.dy = -ballSpeed);
-                downButton.addEventListener("mousedown", () => ball.dy = ballSpeed);
-
-                [leftButton, rightButton, upButton, downButton].forEach(button => 
-                    button.addEventListener("mouseup", () => ball.dx = 0)
-                );
-            } else {
-                mobileControls.style.display = "none";
-
-                // PC Keyboard listeners
-                document.addEventListener("keydown", e => {
-                    if (e.key === "ArrowLeft" || e.key === "a") ball.dx = -ballSpeed;
-                    if (e.key === "ArrowRight" || e.key === "d") ball.dx = ballSpeed;
-                    if (e.key === "ArrowUp") ball.dy = -ballSpeed;
-                    if (e.key === "ArrowDown") ball.dy = ballSpeed;
-                });
-
-                document.addEventListener("keyup", e => {
-                    if (["ArrowLeft", "ArrowRight", "a", "d"].includes(e.key)) ball.dx = 0;
-                });
-            }
-        }
-
-        function isMobileDevice() {
-            return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
         }
 
         function initMap() {
@@ -230,16 +189,31 @@
             return `rgb(${r},${g},${b})`;
         }
 
+        function checkCollision(ball, rect) {
+            return (
+                ball.y - ball.radius <= rect.y + rect.height &&
+                ball.y + ball.radius >= rect.y &&
+                ball.x + ball.radius >= rect.x &&
+                ball.x - ball.radius <= rect.x + rect.width
+            );
+        }
+
         function gameLoop() {
             if (gameOver) {
-                gameOverSound.play().catch(e => console.error(e));
-                setTimeout(restartGame, 2000);
+                if (!gameOverSoundPlayed) {
+                    gameOverSound.play().catch(e => console.error(e));
+                    gameOverSoundPlayed = true;
+                }
+                ctx.fillStyle = "red";
+                ctx.font = "30px Arial";
+                ctx.fillText("Game Over! Restarting...", 200, canvas.height / 2);
+
+                setTimeout(restartGame, 2000); // Restart the game after 2 seconds
                 return;
             }
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Draw the ball
             ctx.fillStyle = "lime";
             ctx.beginPath();
             ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
@@ -249,44 +223,65 @@
             ball.x += ball.dx;
             ball.y += ball.dy;
 
-            // Move obstacles
+            if (ball.x - ball.radius < 0 || ball.x + ball.radius > canvas.width) {
+                ball.dx = -ball.dx;
+                bounceSound.play().catch(e => console.error(e));
+            }
+
+            if (ball.y - ball.radius < 0 || ball.y + ball.radius > canvas.height) {
+                ball.dy = -ball.dy;
+                bounceSound.play().catch(e => console.error(e));
+            }
+
             obstacles.forEach((obstacle, index) => {
                 ctx.fillStyle = obstacle.color;
                 ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
 
                 obstacle.y += ballSpeed;
 
-                // Recycle obstacle
+                if (checkCollision(ball, obstacle)) {
+                    gameOver = true;
+
+                    highScores.push(score);
+                    highScores.sort((a, b) => b - a);
+                    highScores = highScores.slice(0, 5);
+                    localStorage.setItem("highScores", JSON.stringify(highScores));
+                }
+
                 if (obstacle.y > canvas.height) {
                     obstacles[index] = generateObstacle(-20);
                 }
             });
 
+            ctx.fillStyle = "white";
+            ctx.font = "24px Arial";
+            ctx.fillText("Score: " + score, 20, 30);
+
             requestAnimationFrame(gameLoop);
         }
 
-        function restartGame() {
-            gameOver = false;
-            isPlaying = false;
-            score = 0;
+        document.addEventListener("keydown", (e) => {
+            if (gameStarted) {
+                if (e.key === "ArrowLeft" || e.key === "a") ball.dx = -ballSpeed / 2;
+                if (e.key === "ArrowRight" || e.key === "d") ball.dx = ballSpeed / 2;
+                if (e.key === "ArrowUp") {
+                    ballSpeed = Math.min(ballSpeed + 0.5, 10);
+                    ball.dy = -ballSpeed;
+                }
+                if (e.key === "ArrowDown") {
+                    ballSpeed = Math.max(ballSpeed - 0.5, 2);
+                    ball.dy = -ballSpeed;
+                }
+            }
+        });
 
-            ball.x = canvas.width / 2;
-            ball.y = canvas.height - 50;
-            ball.dx = 0;
-            ball.dy = -ballSpeed;
+        document.addEventListener("keyup", (e) => {
+            if (e.key === "ArrowLeft" || e.key === "a" || e.key === "ArrowRight" || e.key === "d") ball.dx = 0;
+        });
 
-            titleScreen.style.display = "flex";
-            gameScreen.style.display = "none";
-
-            displayHighScores();
-        }
-
-        function displayHighScores() {
-            scoresList.innerHTML = highScores
-                .slice(0, 5)
-                .map((score, index) => `<li>${index + 1}. ${score}</li>`)
-                .join("");
-        }
+        setInterval(() => {
+            if (!gameOver) score++;
+        }, 1000);
 
         displayHighScores();
         titleScreen.style.display = "flex";
