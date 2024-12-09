@@ -72,6 +72,7 @@
     </style>
 </head>
 <body>
+    <!-- Title Screen -->
     <div id="titleScreen">
         <h1>Ball Dinsaw</h1>
         <div id="highScores">
@@ -80,9 +81,12 @@
         </div>
         <button id="startButton"></button>
     </div>
+
+    <!-- Game Screen -->
     <div id="gameScreen">
         <canvas id="gameCanvas" width="800" height="600"></canvas>
     </div>
+
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
@@ -90,11 +94,13 @@
         let ballSpeed = 4;
         const ball = { x: canvas.width / 2, y: canvas.height - 50, radius: 10, dx: 0, dy: -ballSpeed };
         let obstacles = [];
-        let powerUps = [];
+        let powerUps = []; // New Power-Up Array
+        let activePowerUp = null; // Active Power-Up
         let gameOver = false;
+        let gameOverSoundPlayed = false;
         let score = 0;
+        let isPlaying = false;
         let highScores = JSON.parse(localStorage.getItem("highScores")) || [];
-        let activePowerUp = null;
 
         const backgroundMusic = new Audio("music-no-copyright-239544.mp3");
         const bounceSound = new Audio("boing-2-44164.mp3");
@@ -102,8 +108,6 @@
 
         backgroundMusic.loop = true;
         backgroundMusic.volume = 0.5;
-
-        let gameStarted = false;
 
         const titleScreen = document.getElementById("titleScreen");
         const gameScreen = document.getElementById("gameScreen");
@@ -122,13 +126,15 @@
         function restartGame() {
             gameOver = false;
             gameStarted = false;
+            gameOverSoundPlayed = false;
             score = 0;
+            isPlaying = false;
             ball.x = canvas.width / 2;
             ball.y = canvas.height - 50;
             ball.dx = 0;
             ball.dy = -ballSpeed;
             obstacles = [];
-            powerUps = [];
+            powerUps = []; // Clear power-ups
 
             backgroundMusic.pause();
             backgroundMusic.currentTime = 0;
@@ -148,6 +154,8 @@
             titleScreen.style.display = "none";
             gameScreen.style.display = "flex";
 
+            isPlaying = true;
+
             if (!gameStarted) {
                 backgroundMusic.play().catch(e => console.error(e));
                 gameStarted = true;
@@ -161,6 +169,7 @@
             for (let i = 0; i < 6; i++) {
                 obstacles.push(generateObstacle(i * -150));
             }
+
             powerUps = [];
             setInterval(generatePowerUp, 5000); // Generate power-ups every 5 seconds
         }
@@ -172,20 +181,20 @@
             return { x, y, width, height, color: randomColor() };
         }
 
+        function generatePowerUp() {
+            const powerUpTypes = ["speed", "slow", "shield", "multiplier"];
+            const type = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+            const x = Math.random() * canvas.width;
+            const y = -20;
+            const radius = 15;
+            powerUps.push({ x, y, radius, type });
+        }
+
         function randomColor() {
             const r = Math.floor(Math.random() * 256);
             const g = Math.floor(Math.random() * 256);
             const b = Math.floor(Math.random() * 256);
             return `rgb(${r},${g},${b})`;
-        }
-
-        function generatePowerUp() {
-            const powerUpTypes = ["speed", "shield", "slow", "multiplier"];
-            const powerUpType = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
-            const x = Math.random() * canvas.width;
-            const y = -20;
-            const radius = 15;
-            powerUps.push({ x, y, radius, type: powerUpType });
         }
 
         function checkCollision(ball, rect) {
@@ -205,7 +214,7 @@
 
                 if (distance < ball.radius + powerUp.radius) {
                     activatePowerUp(powerUp.type);
-                    powerUps.splice(index, 1); // Remove the power-up once collected
+                    powerUps.splice(index, 1); // Remove power-up on collision
                 }
             });
         }
@@ -213,27 +222,20 @@
         function activatePowerUp(type) {
             switch (type) {
                 case "speed":
-                    activePowerUp = "speed";
                     ballSpeed = 8;
-                    setTimeout(() => ballSpeed = 4, 5000); // Speed boost lasts 5 seconds
+                    setTimeout(() => ballSpeed = 4, 5000);
+                    break;
+                case "slow":
+                    ballSpeed = 2;
+                    setTimeout(() => ballSpeed = 4, 5000);
                     break;
                 case "shield":
                     activePowerUp = "shield";
-                    setTimeout(() => activePowerUp = null, 5000); // Shield lasts 5 seconds
-                    break;
-                case "slow":
-                    activePowerUp = "slow";
-                    ballSpeed = 2;
-                    obstacles.forEach(obstacle => obstacle.speed = 2);
-                    setTimeout(() => {
-                        ballSpeed = 4;
-                        obstacles.forEach(obstacle => obstacle.speed = 4);
-                        activePowerUp = null;
-                    }, 5000); // Slow motion lasts 5 seconds
+                    setTimeout(() => activePowerUp = null, 5000);
                     break;
                 case "multiplier":
                     activePowerUp = "multiplier";
-                    setTimeout(() => activePowerUp = null, 5000); // Score multiplier lasts 5 seconds
+                    setTimeout(() => activePowerUp = null, 5000);
                     break;
             }
         }
@@ -262,6 +264,7 @@
 
             ball.x += ball.dx;
             ball.y += ball.dy;
+
             if (ball.x - ball.radius < 0 || ball.x + ball.radius > canvas.width) {
                 ball.dx = -ball.dx;
                 bounceSound.play().catch(e => console.error(e));
@@ -275,11 +278,13 @@
             obstacles.forEach((obstacle, index) => {
                 ctx.fillStyle = obstacle.color;
                 ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+
                 obstacle.y += ballSpeed;
 
                 if (checkCollision(ball, obstacle)) {
                     if (activePowerUp !== "shield") {
                         gameOver = true;
+
                         highScores.push(score);
                         highScores.sort((a, b) => b - a);
                         highScores = highScores.slice(0, 5);
@@ -299,25 +304,23 @@
                 ctx.arc(powerUp.x, powerUp.y, powerUp.radius, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.closePath();
-                powerUp.y += 2; // Power-up moves down
+                powerUp.y += 2; // Power-ups move down
 
                 if (powerUp.y > canvas.height) {
-                    powerUps = powerUps.filter(p => p !== powerUp); // Remove power-up when off-screen
+                    powerUps.splice(powerUps.indexOf(powerUp), 1); // Remove off-screen power-ups
                 }
             });
 
-            // Check if the ball collides with any power-ups
             checkPowerUpCollision();
 
-            // Display score
             ctx.fillStyle = "white";
             ctx.font = "24px Arial";
             ctx.fillText("Score: " + score, 20, 30);
 
             if (activePowerUp === "multiplier") {
-                score += 2; // Double score while multiplier is active
+                score += 2;
             } else {
-                score++; // Regular scoring
+                score++;
             }
 
             requestAnimationFrame(gameLoop);
@@ -343,7 +346,9 @@
         });
 
         setInterval(() => {
-            if (!gameOver) score++;
+            if (isPlaying) {
+                score++;
+            }
         }, 1000);
 
         displayHighScores();
