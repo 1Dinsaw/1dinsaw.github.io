@@ -94,13 +94,14 @@
         let ballSpeed = 4;
         const ball = { x: canvas.width / 2, y: canvas.height - 50, radius: 10, dx: 0, dy: -ballSpeed };
         let obstacles = [];
-        let powerUps = []; // New Power-Up Array
-        let activePowerUp = null; // Active Power-Up
+        let powerUps = [];
+        let activePowerUp = null;
         let gameOver = false;
         let gameOverSoundPlayed = false;
         let score = 0;
         let isPlaying = false;
         let highScores = JSON.parse(localStorage.getItem("highScores")) || [];
+        let powerUpInterval;
 
         const backgroundMusic = new Audio("music-no-copyright-239544.mp3");
         const bounceSound = new Audio("boing-2-44164.mp3");
@@ -125,7 +126,6 @@
 
         function restartGame() {
             gameOver = false;
-            gameStarted = false;
             gameOverSoundPlayed = false;
             score = 0;
             isPlaying = false;
@@ -134,14 +134,11 @@
             ball.dx = 0;
             ball.dy = -ballSpeed;
             obstacles = [];
-            powerUps = []; // Clear power-ups
+            powerUps = [];
+            clearInterval(powerUpInterval);
 
             backgroundMusic.pause();
             backgroundMusic.currentTime = 0;
-            bounceSound.pause();
-            bounceSound.currentTime = 0;
-            gameOverSound.pause();
-            gameOverSound.currentTime = 0;
 
             titleScreen.style.display = "flex";
             gameScreen.style.display = "none";
@@ -156,9 +153,8 @@
 
             isPlaying = true;
 
-            if (!gameStarted) {
+            if (!gameOver) {
                 backgroundMusic.play().catch(e => console.error(e));
-                gameStarted = true;
                 initMap();
                 gameLoop();
             }
@@ -171,7 +167,7 @@
             }
 
             powerUps = [];
-            setInterval(generatePowerUp, 5000); // Generate power-ups every 5 seconds
+            powerUpInterval = setInterval(generatePowerUp, 5000);
         }
 
         function generateObstacle(y) {
@@ -197,6 +193,101 @@
             return `rgb(${r},${g},${b})`;
         }
 
+        function gameLoop() {
+            if (gameOver) {
+                if (!gameOverSoundPlayed) {
+                    gameOverSound.play().catch(e => console.error(e));
+                    gameOverSoundPlayed = true;
+                }
+                ctx.fillStyle = "red";
+                ctx.font = "30px Arial";
+                ctx.fillText("Game Over! Restarting...", 200, canvas.height / 2);
+
+                setTimeout(restartGame, 2000);
+                return;
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Ball Logic
+            ctx.fillStyle = "lime";
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.closePath();
+
+            ball.x += ball.dx;
+            ball.y += ball.dy;
+
+            if (ball.x - ball.radius < 0 || ball.x + ball.radius > canvas.width) {
+                ball.dx = -ball.dx;
+                bounceSound.play().catch(e => console.error(e));
+            }
+
+            if (ball.y - ball.radius < 0 || ball.y + ball.radius > canvas.height) {
+                ball.dy = -ball.dy;
+                bounceSound.play().catch(e => console.error(e));
+            }
+
+            // Obstacle Logic
+            obstacles.forEach((obstacle, index) => {
+                ctx.fillStyle = obstacle.color;
+                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+
+                obstacle.y += ballSpeed;
+
+                if (checkCollision(ball, obstacle)) {
+                    if (activePowerUp !== "shield") {
+                        gameOver = true;
+                        highScores.push(score);
+                        highScores.sort((a, b) => b - a);
+                        highScores = highScores.slice(0, 5);
+                        localStorage.setItem("highScores", JSON.stringify(highScores));
+                    }
+                }
+
+                if (obstacle.y > canvas.height) {
+                    obstacles[index] = generateObstacle(-20);
+                }
+            });
+
+            // Power-Up Logic
+            powerUps.forEach((powerUp, index) => {
+                ctx.fillStyle = "yellow";
+                ctx.beginPath();
+                ctx.arc(powerUp.x, powerUp.y, powerUp.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.closePath();
+
+                powerUp.y += 2;
+
+                if (powerUp.y > canvas.height) {
+                    powerUps.splice(index, 1);
+                }
+
+                const dx = ball.x - powerUp.x;
+                const dy = ball.y - powerUp.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < ball.radius + powerUp.radius) {
+                    activatePowerUp(powerUp.type);
+                    powerUps.splice(index, 1);
+                }
+            });
+
+            ctx.fillStyle = "white";
+            ctx.font = "24px Arial";
+            ctx.fillText("Score: " + score, 20, 30);
+
+            if (activePowerUp === "multiplier") {
+                score += 2;
+            } else {
+                score++;
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
         function checkCollision(ball, rect) {
             return (
                 ball.y - ball.radius <= rect.y + rect.height &&
@@ -204,19 +295,6 @@
                 ball.x + ball.radius >= rect.x &&
                 ball.x - ball.radius <= rect.x + rect.width
             );
-        }
-
-        function checkPowerUpCollision() {
-            powerUps.forEach((powerUp, index) => {
-                const dx = ball.x - powerUp.x;
-                const dy = ball.y - powerUp.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-
-                if (distance < ball.radius + powerUp.radius) {
-                    activatePowerUp(powerUp.type);
-                    powerUps.splice(index, 1); // Remove power-up on collision
-                }
-            });
         }
 
         function activatePowerUp(type) {
@@ -239,117 +317,6 @@
                     break;
             }
         }
-
-        function gameLoop() {
-            if (gameOver) {
-                if (!gameOverSoundPlayed) {
-                    gameOverSound.play().catch(e => console.error(e));
-                    gameOverSoundPlayed = true;
-                }
-                ctx.fillStyle = "red";
-                ctx.font = "30px Arial";
-                ctx.fillText("Game Over! Restarting...", 200, canvas.height / 2);
-
-                setTimeout(restartGame, 2000);
-                return;
-            }
-
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            ctx.fillStyle = "lime";
-            ctx.beginPath();
-            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.closePath();
-
-            ball.x += ball.dx;
-            ball.y += ball.dy;
-
-            if (ball.x - ball.radius < 0 || ball.x + ball.radius > canvas.width) {
-                ball.dx = -ball.dx;
-                bounceSound.play().catch(e => console.error(e));
-            }
-
-            if (ball.y - ball.radius < 0 || ball.y + ball.radius > canvas.height) {
-                ball.dy = -ball.dy;
-                bounceSound.play().catch(e => console.error(e));
-            }
-
-            obstacles.forEach((obstacle, index) => {
-                ctx.fillStyle = obstacle.color;
-                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
-
-                obstacle.y += ballSpeed;
-
-                if (checkCollision(ball, obstacle)) {
-                    if (activePowerUp !== "shield") {
-                        gameOver = true;
-
-                        highScores.push(score);
-                        highScores.sort((a, b) => b - a);
-                        highScores = highScores.slice(0, 5);
-                        localStorage.setItem("highScores", JSON.stringify(highScores));
-                    }
-                }
-
-                if (obstacle.y > canvas.height) {
-                    obstacles[index] = generateObstacle(-20);
-                }
-            });
-
-            // Draw power-ups
-            powerUps.forEach(powerUp => {
-                ctx.fillStyle = "yellow";
-                ctx.beginPath();
-                ctx.arc(powerUp.x, powerUp.y, powerUp.radius, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.closePath();
-                powerUp.y += 2; // Power-ups move down
-
-                if (powerUp.y > canvas.height) {
-                    powerUps.splice(powerUps.indexOf(powerUp), 1); // Remove off-screen power-ups
-                }
-            });
-
-            checkPowerUpCollision();
-
-            ctx.fillStyle = "white";
-            ctx.font = "24px Arial";
-            ctx.fillText("Score: " + score, 20, 30);
-
-            if (activePowerUp === "multiplier") {
-                score += 2;
-            } else {
-                score++;
-            }
-
-            requestAnimationFrame(gameLoop);
-        }
-
-        document.addEventListener("keydown", (e) => {
-            if (gameStarted) {
-                if (e.key === "ArrowLeft" || e.key === "a") ball.dx = -ballSpeed / 2;
-                if (e.key === "ArrowRight" || e.key === "d") ball.dx = ballSpeed / 2;
-                if (e.key === "ArrowUp") {
-                    ballSpeed = Math.min(ballSpeed + 0.5, 10);
-                    ball.dy = -ballSpeed;
-                }
-                if (e.key === "ArrowDown") {
-                    ballSpeed = Math.max(ballSpeed - 0.5, 2);
-                    ball.dy = -ballSpeed;
-                }
-            }
-        });
-
-        document.addEventListener("keyup", (e) => {
-            if (e.key === "ArrowLeft" || e.key === "a" || e.key === "ArrowRight" || e.key === "d") ball.dx = 0;
-        });
-
-        setInterval(() => {
-            if (isPlaying) {
-                score++;
-            }
-        }, 1000);
 
         displayHighScores();
         titleScreen.style.display = "flex";
