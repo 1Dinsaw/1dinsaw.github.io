@@ -167,7 +167,7 @@
             }
 
             powerUps = [];
-            powerUpInterval = setInterval(generatePowerUp, 5000); // Generate power-ups every 5 seconds
+            powerUpInterval = setInterval(generatePowerUp, 5000);
         }
 
         function generateObstacle(y) {
@@ -193,17 +193,78 @@
             return `rgb(${r},${g},${b})`;
         }
 
-        function checkCollision(ball, rect) {
-            return (
-                ball.y - ball.radius <= rect.y + rect.height &&
-                ball.y + ball.radius >= rect.y &&
-                ball.x + ball.radius >= rect.x &&
-                ball.x - ball.radius <= rect.x + rect.width
-            );
-        }
+        function gameLoop() {
+            if (gameOver) {
+                if (!gameOverSoundPlayed) {
+                    gameOverSound.play().catch(e => console.error(e));
+                    gameOverSoundPlayed = true;
+                }
+                ctx.fillStyle = "red";
+                ctx.font = "30px Arial";
+                ctx.fillText("Game Over! Restarting...", 200, canvas.height / 2);
 
-        function checkPowerUpCollision() {
+                setTimeout(restartGame, 2000);
+                return;
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Ball Logic
+            ctx.fillStyle = "lime";
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.closePath();
+
+            ball.x += ball.dx;
+            ball.y += ball.dy;
+
+            if (ball.x - ball.radius < 0 || ball.x + ball.radius > canvas.width) {
+                ball.dx = -ball.dx;
+                bounceSound.play().catch(e => console.error(e));
+            }
+
+            if (ball.y - ball.radius < 0 || ball.y + ball.radius > canvas.height) {
+                ball.dy = -ball.dy;
+                bounceSound.play().catch(e => console.error(e));
+            }
+
+            // Obstacle Logic
+            obstacles.forEach((obstacle, index) => {
+                ctx.fillStyle = obstacle.color;
+                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+
+                obstacle.y += ballSpeed;
+
+                if (checkCollision(ball, obstacle)) {
+                    if (activePowerUp !== "shield") {
+                        gameOver = true;
+                        highScores.push(score);
+                        highScores.sort((a, b) => b - a);
+                        highScores = highScores.slice(0, 5);
+                        localStorage.setItem("highScores", JSON.stringify(highScores));
+                    }
+                }
+
+                if (obstacle.y > canvas.height) {
+                    obstacles[index] = generateObstacle(-20);
+                }
+            });
+
+            // Power-Up Logic
             powerUps.forEach((powerUp, index) => {
+                ctx.fillStyle = "yellow";
+                ctx.beginPath();
+                ctx.arc(powerUp.x, powerUp.y, powerUp.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.closePath();
+
+                powerUp.y += 2;
+
+                if (powerUp.y > canvas.height) {
+                    powerUps.splice(index, 1);
+                }
+
                 const dx = ball.x - powerUp.x;
                 const dy = ball.y - powerUp.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
@@ -213,6 +274,27 @@
                     powerUps.splice(index, 1);
                 }
             });
+
+            ctx.fillStyle = "white";
+            ctx.font = "24px Arial";
+            ctx.fillText("Score: " + score, 20, 30);
+
+            if (activePowerUp === "multiplier") {
+                score += 2;
+            } else {
+                score++;
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function checkCollision(ball, rect) {
+            return (
+                ball.y - ball.radius <= rect.y + rect.height &&
+                ball.y + ball.radius >= rect.y &&
+                ball.x + ball.radius >= rect.x &&
+                ball.x - ball.radius <= rect.x + rect.width
+            );
         }
 
         function activatePowerUp(type) {
@@ -235,108 +317,6 @@
                     break;
             }
         }
-
-        function gameLoop() {
-            if (gameOver) {
-                if (!gameOverSoundPlayed) {
-                    gameOverSound.play().catch(e => console.error(e));
-                    gameOverSoundPlayed = true;
-                }
-                ctx.fillStyle = "red";
-                ctx.font = "30px Arial";
-                ctx.fillText("Game Over! Restarting...", 200, canvas.height / 2);
-
-                setTimeout(restartGame, 2000);
-                return;
-            }
-
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            ctx.fillStyle = "lime";
-            ctx.beginPath();
-            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.closePath();
-
-            ball.x += ball.dx;
-            ball.y += ball.dy;
-
-            if (ball.x - ball.radius < 0 || ball.x + ball.radius > canvas.width) {
-                ball.dx = -ball.dx;
-                bounceSound.play().catch(e => console.error(e));
-            }
-
-            if (ball.y - ball.radius < 0 || ball.y + ball.radius > canvas.height) {
-                ball.dy = -ball.dy;
-                bounceSound.play().catch(e => console.error(e));
-            }
-
-            obstacles.forEach((obstacle, index) => {
-                ctx.fillStyle = obstacle.color;
-                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
-
-                obstacle.y += ballSpeed;
-
-                if (checkCollision(ball, obstacle)) {
-                    if (activePowerUp !== "shield") {
-                        gameOver = true;
-
-                        highScores.push(score);
-                        highScores.sort((a, b) => b - a);
-                        highScores = highScores.slice(0, 5);
-                        localStorage.setItem("highScores", JSON.stringify(highScores));
-                    }
-                }
-
-                if (obstacle.y > canvas.height) {
-                    obstacles[index] = generateObstacle(-20);
-                }
-            });
-
-            powerUps.forEach((powerUp, index) => {
-                ctx.fillStyle = "yellow";
-                ctx.beginPath();
-                ctx.arc(powerUp.x, powerUp.y, powerUp.radius, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.closePath();
-
-                powerUp.y += 2;
-
-                if (powerUp.y > canvas.height) {
-                    powerUps.splice(index, 1);
-                }
-            });
-
-            checkPowerUpCollision();
-
-            ctx.fillStyle = "white";
-            ctx.font = "24px Arial";
-            ctx.fillText("Score: " + score, 20, 30);
-
-            if (activePowerUp === "multiplier") {
-                score += 2;
-            } else {
-                score++;
-            }
-
-            requestAnimationFrame(gameLoop);
-        }
-
-        document.addEventListener("keydown", (e) => {
-            if (isPlaying) {
-                if (e.key === "ArrowLeft" || e.key === "a") ball.dx = -ballSpeed / 2;
-                if (e.key === "ArrowRight" || e.key === "d") ball.dx = ballSpeed / 2;
-                if (e.key === "ArrowUp" || e.key === "w") ball.dy = -ballSpeed / 2;
-                if (e.key === "ArrowDown" || e.key === "s") ball.dy = ballSpeed / 2;
-            }
-        });
-
-        document.addEventListener("keyup", (e) => {
-            if (["ArrowLeft", "a", "ArrowRight", "d", "ArrowUp", "w", "ArrowDown", "s"].includes(e.key)) {
-                ball.dx = 0;
-                ball.dy = 0;
-            }
-        });
 
         displayHighScores();
         titleScreen.style.display = "flex";
