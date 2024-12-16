@@ -1,343 +1,131 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ball Dinsaw</title>
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            background: url('triangles-1430105_1280.png') no-repeat center center fixed;
-            background-size: cover;
-            color: white;
-            font-family: Arial, sans-serif;
-            height: 100vh;
-        }
-
-        #titleScreen, #gameScreen {
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            width: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
-        }
-
-        #titleScreen {
-            display: flex;
-            background: rgba(0, 0, 0, 0.7);
-        }
-
-        #highScores {
-            margin-top: 20px;
-            font-size: 20px;
-            text-align: center;
-        }
-
-        #scoresList {
-            list-style: none;
-            padding: 0;
-        }
-
-        #scoresList li {
-            margin: 5px 0;
-        }
-
-        #startButton {
-            width: 100px;
-            height: 100px;
-            background: url('play-button-7426443_640.png') no-repeat center center;
-            background-size: cover;
-            border: none;
-            cursor: pointer;
-            margin-top: 20px;
-        }
-
-        #startButton:hover {
-            filter: brightness(1.2);
-        }
-
-        canvas {
-            display: block;
-            margin-top: 10px;
-            border: none;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cat Fight Simulator</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    canvas { display: block; }
+    #hud {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+    .health-bar {
+      position: absolute;
+      width: 100px;
+      height: 10px;
+      background: red;
+      border: 2px solid black;
+    }
+    .cooldown {
+      position: absolute;
+      width: 100px;
+      height: 10px;
+      background: blue;
+      opacity: 0.5;
+      border: 2px solid black;
+    }
+  </style>
 </head>
 <body>
-    <!-- Title Screen -->
-    <div id="titleScreen">
-        <h1>Ball Dinsaw</h1>
-        <div id="highScores">
-            <strong>High Scores:</strong>
-            <ul id="scoresList"></ul>
-        </div>
-        <button id="startButton"></button>
-    </div>
+  <div id="hud">
+    <div id="player-health" class="health-bar"></div>
+    <div id="dash-cooldown" class="cooldown"></div>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r146/three.min.js"></script>
+  <script>
+    // Setup scene, camera, and renderer
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
 
-    <!-- Game Screen -->
-    <div id="gameScreen">
-        <canvas id="gameCanvas" width="800" height="600"></canvas>
-    </div>
+    // Player setup
+    const player = new THREE.Mesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshBasicMaterial({ color: 0x00ff00 })
+    );
+    scene.add(player);
+    player.position.y = 0.5;
 
-    <script>
-        const canvas = document.getElementById("gameCanvas");
-        const ctx = canvas.getContext("2d");
+    // Bot setup
+    const bot = new THREE.Mesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshBasicMaterial({ color: 0xff0000 })
+    );
+    scene.add(bot);
+    bot.position.set(5, 0.5, 5);
 
-        let ballSpeed = 4;
-        const ball = { x: canvas.width / 2, y: canvas.height - 50, radius: 10, dx: 0, dy: -ballSpeed };
-        let obstacles = [];
-        let powerUps = [];
-        let activePowerUp = null;
-        let gameOver = false;
-        let gameOverSoundPlayed = false;
-        let score = 0;
-        let isPlaying = false;
-        let highScores = JSON.parse(localStorage.getItem("highScores")) || [];
-        let powerUpInterval;
+    // Light saber effect
+    const lightSaber = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.1, 0.1, 3, 32),
+      new THREE.MeshBasicMaterial({ color: 0x00ffff })
+    );
+    scene.add(lightSaber);
+    lightSaber.position.set(player.position.x, player.position.y + 1, player.position.z);
 
-        const backgroundMusic = new Audio("music-no-copyright-239544.mp3");
-        const bounceSound = new Audio("boing-2-44164.mp3");
-        const gameOverSound = new Audio("mixkit-retro-arcade-game-over-470.wav");
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambientLight);
 
-        backgroundMusic.loop = true;
-        backgroundMusic.volume = 0.5;
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(10, 10, 10);
+    scene.add(directionalLight);
 
-        const titleScreen = document.getElementById("titleScreen");
-        const gameScreen = document.getElementById("gameScreen");
-        const scoresList = document.getElementById("scoresList");
-        const startButton = document.getElementById("startButton");
+    // Camera controls
+    let keys = {};
+    document.addEventListener("keydown", (e) => (keys[e.code] = true));
+    document.addEventListener("keyup", (e) => (keys[e.code] = false));
 
-        startButton.addEventListener("click", startGame);
+    // Cooldown timer
+    let dashCooldown = 0;
+    let playerHealth = 100;
+    const dashDuration = 3000; // 3 seconds
+    const dashCooldownTime = 10000; // 10 seconds
+    let isDashing = false;
 
-        function displayHighScores() {
-            scoresList.innerHTML = highScores
-                .slice(0, 5)
-                .map((score, index) => `<li>${index + 1}. ${score}</li>`)
-                .join("");
-        }
+    // Movement and game loop
+    function animate() {
+      requestAnimationFrame(animate);
 
-        function restartGame() {
-            gameOver = false;
-            gameOverSoundPlayed = false;
-            score = 0;
-            isPlaying = false;
-            ball.x = canvas.width / 2;
-            ball.y = canvas.height - 50;
-            ball.dx = 0;
-            ball.dy = -ballSpeed;
-            obstacles = [];
-            powerUps = [];
-            clearInterval(powerUpInterval);
+      // Movement controls
+      const speed = isDashing ? 0.2 : 0.1;
+      if (keys["KeyW"]) player.position.z -= speed;
+      if (keys["KeyS"]) player.position.z += speed;
+      if (keys["KeyA"]) player.position.x -= speed;
+      if (keys["KeyD"]) player.position.x += speed;
 
-            backgroundMusic.pause();
-            backgroundMusic.currentTime = 0;
+      // Dash control
+      if (keys["ControlLeft"] && dashCooldown <= 0) {
+        isDashing = true;
+        dashCooldown = dashCooldownTime;
+        setTimeout(() => (isDashing = false), dashDuration);
+      }
 
-            titleScreen.style.display = "flex";
-            gameScreen.style.display = "none";
+      if (dashCooldown > 0) dashCooldown -= 16; // 16ms per frame
 
-            initMap();
-            displayHighScores();
-        }
+      // Update HUD
+      document.getElementById("player-health").style.width = `${playerHealth}%`;
+      document.getElementById("dash-cooldown").style.width = `${100 - (dashCooldown / dashCooldownTime) * 100}%`;
 
-        function startGame() {
-            titleScreen.style.display = "none";
-            gameScreen.style.display = "flex";
+      // Look around with the mouse
+      window.addEventListener("mousemove", (e) => {
+        camera.rotation.y -= e.movementX * 0.002;
+        camera.rotation.x -= e.movementY * 0.002;
+      });
 
-            isPlaying = true;
+      // Render scene
+      renderer.render(scene, camera);
+    }
 
-            if (!gameOver) {
-                backgroundMusic.play().catch(e => console.error(e));
-                initMap();
-                gameLoop();
-            }
-        }
-
-        function initMap() {
-            obstacles = [];
-            for (let i = 0; i < 6; i++) {
-                obstacles.push(generateObstacle(i * -150));
-            }
-
-            powerUps = [];
-            powerUpInterval = setInterval(generatePowerUp, 5000);
-        }
-
-        function generateObstacle(y) {
-            const width = Math.random() * (200 - 50) + 50;
-            const height = 20;
-            const x = Math.random() * (canvas.width - width);
-            return { x, y, width, height, color: randomColor() };
-        }
-
-        function generatePowerUp() {
-            const powerUpTypes = ["speed", "slow", "shield", "multiplier"];
-            const type = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
-            const x = Math.random() * canvas.width;
-            const y = -20;
-            const radius = 15;
-            powerUps.push({ x, y, radius, type });
-        }
-
-        function randomColor() {
-            const r = Math.floor(Math.random() * 256);
-            const g = Math.floor(Math.random() * 256);
-            const b = Math.floor(Math.random() * 256);
-            return `rgb(${r},${g},${b})`;
-        }
-
-        function gameLoop() {
-            if (gameOver) {
-                if (!gameOverSoundPlayed) {
-                    gameOverSound.play().catch(e => console.error(e));
-                    gameOverSoundPlayed = true;
-                }
-                ctx.fillStyle = "red";
-                ctx.font = "30px Arial";
-                ctx.fillText("Game Over! Restarting...", 200, canvas.height / 2);
-
-                setTimeout(restartGame, 2000);
-                return;
-            }
-
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Ball Logic
-            ctx.fillStyle = "lime";
-            ctx.beginPath();
-            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.closePath();
-
-            ball.x += ball.dx;
-            ball.y += ball.dy;
-
-            if (ball.x - ball.radius < 0 || ball.x + ball.radius > canvas.width) {
-                ball.dx = -ball.dx;
-                bounceSound.play().catch(e => console.error(e));
-            }
-
-            if (ball.y - ball.radius < 0 || ball.y + ball.radius > canvas.height) {
-                ball.dy = -ball.dy;
-                bounceSound.play().catch(e => console.error(e));
-            }
-
-            // Handle Obstacle Movement and Collision
-            obstacles.forEach((obstacle, index) => {
-                ctx.fillStyle = obstacle.color;
-                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
-
-                obstacle.y += ballSpeed;
-
-                if (checkCollision(ball, obstacle)) {
-                    if (activePowerUp !== "shield") {
-                        gameOver = true;
-                        highScores.push(score);
-                        highScores.sort((a, b) => b - a);
-                        highScores = highScores.slice(0, 5);
-                        localStorage.setItem("highScores", JSON.stringify(highScores));
-                    }
-                }
-
-                if (obstacle.y > canvas.height) {
-                    obstacles[index] = generateObstacle(-20);
-                }
-            });
-
-            // Power-Up Logic
-            powerUps.forEach((powerUp, index) => {
-                ctx.fillStyle = "yellow";
-                ctx.beginPath();
-                ctx.arc(powerUp.x, powerUp.y, powerUp.radius, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.closePath();
-
-                powerUp.y += 2;
-
-                if (powerUp.y > canvas.height) {
-                    powerUps.splice(index, 1);
-                }
-
-                const dx = ball.x - powerUp.x;
-                const dy = ball.y - powerUp.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-
-                if (distance < ball.radius + powerUp.radius) {
-                    activatePowerUp(powerUp.type);
-                    powerUps.splice(index, 1);
-                }
-            });
-
-            // Display Score
-            ctx.fillStyle = "white";
-            ctx.font = "24px Arial";
-            ctx.fillText("Score: " + score, 20, 30);
-
-            if (activePowerUp === "multiplier") {
-                score += 2;
-            } else {
-                score++;
-            }
-
-            requestAnimationFrame(gameLoop);
-        }
-
-        function checkCollision(ball, rect) {
-            return (
-                ball.y - ball.radius <= rect.y + rect.height &&
-                ball.y + ball.radius >= rect.y &&
-                ball.x + ball.radius >= rect.x &&
-                ball.x - ball.radius <= rect.x + rect.width
-            );
-        }
-
-        function activatePowerUp(type) {
-            switch (type) {
-                case "speed":
-                    ballSpeed = 8;
-                    setTimeout(() => ballSpeed = 4, 5000);
-                    break;
-                case "slow":
-                    ballSpeed = 2;
-                    setTimeout(() => ballSpeed = 4, 5000);
-                    break;
-                case "shield":
-                    activePowerUp = "shield";
-                    setTimeout(() => activePowerUp = null, 5000);
-                    break;
-                case "multiplier":
-                    activePowerUp = "multiplier";
-                    setTimeout(() => activePowerUp = null, 5000);
-                    break;
-            }
-        }
-
-        // Controls: Arrow Keys and WASD
-        document.addEventListener("keydown", (e) => {
-            if (isPlaying) {
-                if (e.key === "ArrowLeft" || e.key === "a") ball.dx = -ballSpeed / 2;
-                if (e.key === "ArrowRight" || e.key === "d") ball.dx = ballSpeed / 2;
-                if (e.key === "ArrowUp" || e.key === "w") ball.dy = -ballSpeed / 2;
-                if (e.key === "ArrowDown" || e.key === "s") ball.dy = ballSpeed / 2;
-            }
-        });
-
-        document.addEventListener("keyup", (e) => {
-            if (["ArrowLeft", "a", "ArrowRight", "d", "ArrowUp", "w", "ArrowDown", "s"].includes(e.key)) {
-                ball.dx = 0;
-                ball.dy = 0;
-            }
-        });
-
-        displayHighScores();
-        titleScreen.style.display = "flex";
-    </script>
+    camera.position.set(0, 2, 5);
+    animate();
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r146/three.min.js"></script>
 </body>
 </html>
