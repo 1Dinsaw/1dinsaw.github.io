@@ -3,129 +3,124 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cat Fight Simulator</title>
+  <title>World Exploration</title>
   <style>
     body { margin: 0; overflow: hidden; }
     canvas { display: block; }
-    #hud {
-      position: absolute;
-      bottom: 20px;
-      right: 20px;
-      color: white;
-      font-family: Arial, sans-serif;
-    }
-    .health-bar {
-      position: absolute;
-      width: 100px;
-      height: 10px;
-      background: red;
-      border: 2px solid black;
-    }
-    .cooldown {
-      position: absolute;
-      width: 100px;
-      height: 10px;
-      background: blue;
-      opacity: 0.5;
-      border: 2px solid black;
-    }
   </style>
 </head>
 <body>
-  <div id="hud">
-    <div id="player-health" class="health-bar"></div>
-    <div id="dash-cooldown" class="cooldown"></div>
-  </div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r146/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three/examples/js/loaders/GLTFLoader.js"></script>
   <script>
-    // Setup scene, camera, and renderer
+    // Scene, Camera, Renderer
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer();
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
-    // Player setup
-    const player = new THREE.Mesh(
-      new THREE.BoxGeometry(1, 1, 1),
-      new THREE.MeshBasicMaterial({ color: 0x00ff00 })
-    );
-    scene.add(player);
-    player.position.y = 0.5;
-
-    // Bot setup
-    const bot = new THREE.Mesh(
-      new THREE.BoxGeometry(1, 1, 1),
-      new THREE.MeshBasicMaterial({ color: 0xff0000 })
-    );
-    scene.add(bot);
-    bot.position.set(5, 0.5, 5);
-
-    // Light saber effect
-    const lightSaber = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.1, 0.1, 3, 32),
-      new THREE.MeshBasicMaterial({ color: 0x00ffff })
-    );
-    scene.add(lightSaber);
-    lightSaber.position.set(player.position.x, player.position.y + 1, player.position.z);
-
-    // Lighting
+    // Lights
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
     directionalLight.position.set(10, 10, 10);
     scene.add(directionalLight);
 
-    // Camera controls
-    let keys = {};
-    document.addEventListener("keydown", (e) => (keys[e.code] = true));
-    document.addEventListener("keyup", (e) => (keys[e.code] = false));
+    // Player (Simple Capsule)
+    const player = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.5, 0.5, 2, 32),
+      new THREE.MeshStandardMaterial({ color: 0x00ff00 })
+    );
+    scene.add(player);
 
-    // Cooldown timer
-    let dashCooldown = 0;
-    let playerHealth = 100;
-    const dashDuration = 3000; // 3 seconds
-    const dashCooldownTime = 10000; // 10 seconds
-    let isDashing = false;
+    // GLTFLoader to load the world
+    const loader = new THREE.GLTFLoader();
+    let world; // Holds the world model
+    loader.load(
+      'assets/spatial_surfsierp01_pano360_skybox.glb', // Path to the .glb file
+      (gltf) => {
+        world = gltf.scene;
+        world.scale.set(10, 10, 10); // Scale the world appropriately
+        scene.add(world);
 
-    // Movement and game loop
+        // Spawn player at a random position on the world
+        randomSpawn();
+      },
+      undefined,
+      (error) => console.error('Error loading world:', error)
+    );
+
+    // Function to randomly spawn player on the world's surface
+    function randomSpawn() {
+      if (!world) return;
+      const boundingBox = new THREE.Box3().setFromObject(world); // Get the bounding box of the world
+      const min = boundingBox.min;
+      const max = boundingBox.max;
+
+      const randomX = THREE.MathUtils.randFloat(min.x, max.x);
+      const randomZ = THREE.MathUtils.randFloat(min.z, max.z);
+
+      // Find a valid position (assume Y=ground level, adjust if needed)
+      const raycaster = new THREE.Raycaster();
+      raycaster.set(new THREE.Vector3(randomX, max.y + 10, randomZ), new THREE.Vector3(0, -1, 0)); // Ray downwards
+      const intersects = raycaster.intersectObject(world, true);
+      if (intersects.length > 0) {
+        const point = intersects[0].point;
+        player.position.set(point.x, point.y + 1, point.z); // Set player above ground level
+      } else {
+        // If no valid point is found, retry
+        randomSpawn();
+      }
+    }
+
+    // PointerLockControls for movement
+    const controls = new THREE.PointerLockControls(camera, document.body);
+    document.addEventListener('click', () => controls.lock());
+
+    // WASD movement
+    const keys = {};
+    document.addEventListener('keydown', (e) => keys[e.code] = true);
+    document.addEventListener('keyup', (e) => keys[e.code] = false);
+
+    const speed = 0.1;
+    function handleMovement() {
+      if (!world) return; // Wait until the world is loaded
+
+      const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).normalize();
+      const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion).normalize();
+
+      if (keys['KeyW']) player.position.add(forward.multiplyScalar(speed));
+      if (keys['KeyS']) player.position.add(forward.multiplyScalar(-speed));
+      if (keys['KeyA']) player.position.add(right.multiplyScalar(-speed));
+      if (keys['KeyD']) player.position.add(right.multiplyScalar(speed));
+
+      // Keep player above ground (basic collision detection with raycasting)
+      const raycaster = new THREE.Raycaster();
+      raycaster.set(player.position.clone().add(new THREE.Vector3(0, 10, 0)), new THREE.Vector3(0, -1, 0));
+      const intersects = raycaster.intersectObject(world, true);
+      if (intersects.length > 0) {
+        player.position.y = intersects[0].point.y + 1; // Keep player above ground level
+      }
+    }
+
+    // Camera follows player
+    function updateCameraPosition() {
+      camera.position.set(player.position.x, player.position.y + 2, player.position.z + 5);
+      camera.lookAt(player.position);
+    }
+
+    // Game Loop
     function animate() {
       requestAnimationFrame(animate);
 
-      // Movement controls
-      const speed = isDashing ? 0.2 : 0.1;
-      if (keys["KeyW"]) player.position.z -= speed;
-      if (keys["KeyS"]) player.position.z += speed;
-      if (keys["KeyA"]) player.position.x -= speed;
-      if (keys["KeyD"]) player.position.x += speed;
+      handleMovement();
+      updateCameraPosition();
 
-      // Dash control
-      if (keys["ControlLeft"] && dashCooldown <= 0) {
-        isDashing = true;
-        dashCooldown = dashCooldownTime;
-        setTimeout(() => (isDashing = false), dashDuration);
-      }
-
-      if (dashCooldown > 0) dashCooldown -= 16; // 16ms per frame
-
-      // Update HUD
-      document.getElementById("player-health").style.width = `${playerHealth}%`;
-      document.getElementById("dash-cooldown").style.width = `${100 - (dashCooldown / dashCooldownTime) * 100}%`;
-
-      // Look around with the mouse
-      window.addEventListener("mousemove", (e) => {
-        camera.rotation.y -= e.movementX * 0.002;
-        camera.rotation.x -= e.movementY * 0.002;
-      });
-
-      // Render scene
       renderer.render(scene, camera);
     }
-
-    camera.position.set(0, 2, 5);
     animate();
   </script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r146/three.min.js"></script>
 </body>
 </html>
