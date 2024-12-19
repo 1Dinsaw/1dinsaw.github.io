@@ -1,24 +1,37 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-// Canvas dimensions
-const WIDTH = window.innerWidth;
-const HEIGHT = window.innerHeight;
-canvas.width = WIDTH;
-canvas.height = HEIGHT;
+const backgroundImage = new Image();
+backgroundImage.src = "pexels-thatguycraig000-1563356.jpg";
+
+// Dynamic canvas resizing
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    gameSettings.groundHeight = canvas.height * 0.1;
+    repositionCharacters();
+}
+
+function repositionCharacters() {
+    player.x = canvas.width * 0.2;
+    player.y = canvas.height - gameSettings.groundHeight - player.height;
+    enemy.x = canvas.width * 0.8;
+    enemy.y = canvas.height - gameSettings.groundHeight - enemy.height;
+}
 
 // Game constants
-const groundHeight = 50;
-const playerWidth = 20;
-const playerHeight = 100;
-const attackSize = 20;
-const gravity = 1.5;
-const jumpStrength = 20;
+const gameSettings = {
+    groundHeight: 50,
+    gravity: 1.5,
+    jumpStrength: 20,
+    enemyAttackCooldown: 1000, // in milliseconds
+};
 
-// Player and enemy properties
-let player = {
+const player = {
+    width: 20,
+    height: 100,
     x: 200,
-    y: HEIGHT - groundHeight - playerHeight,
+    y: 0,
     dx: 0,
     dy: 0,
     hp: 3,
@@ -26,14 +39,17 @@ let player = {
     direction: "right",
 };
 
-let enemy = {
-    x: WIDTH - 250,
-    y: HEIGHT - groundHeight - playerHeight,
+const enemy = {
+    width: 20,
+    height: 100,
+    x: 0,
+    y: 0,
     dx: 0,
     dy: 0,
     hp: 3,
     attacking: false,
     direction: "left",
+    lastAttackTime: 0,
 };
 
 let score = 0;
@@ -44,6 +60,7 @@ function startGame() {
     document.getElementById("title-screen").style.display = "none";
     canvas.style.display = "block";
     gameActive = true;
+    repositionCharacters();
     gameLoop();
 }
 
@@ -54,12 +71,16 @@ function drawRect(x, y, width, height, color) {
     ctx.fillRect(x, y, width, height);
 }
 
+function drawBackground() {
+    ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+}
+
 function applyGravity(character) {
-    if (character.y + playerHeight < HEIGHT - groundHeight) {
-        character.dy += gravity;
+    if (character.y + character.height < canvas.height - gameSettings.groundHeight) {
+        character.dy += gameSettings.gravity;
     } else {
         character.dy = 0;
-        character.y = HEIGHT - groundHeight - playerHeight;
+        character.y = canvas.height - gameSettings.groundHeight - character.height;
     }
 }
 
@@ -69,8 +90,9 @@ function moveCharacter(character) {
 }
 
 function attack(character) {
-    const attackX = character.direction === "right" ? character.x + playerWidth : character.x - attackSize;
-    const attackY = character.y + (character.attacking === "mid" ? playerHeight / 2 - attackSize / 2 : playerHeight - attackSize - 10);
+    const attackX = character.direction === "right" ? character.x + character.width : character.x - attackSize;
+    const attackY =
+        character.y + (character.attacking === "mid" ? character.height / 2 - attackSize / 2 : character.height - attackSize - 10);
     return { x: attackX, y: attackY, width: attackSize, height: attackSize };
 }
 
@@ -83,25 +105,42 @@ function detectCollision(rect1, rect2) {
     );
 }
 
+function bounceBack(attacker, victim) {
+    const bounceDistance = 20;
+    if (attacker.direction === "right") {
+        attacker.x -= bounceDistance;
+        victim.x += bounceDistance;
+    } else {
+        attacker.x += bounceDistance;
+        victim.x -= bounceDistance;
+    }
+}
+
 function enemyLogic() {
-    if (enemy.hp <= 0) {
-        enemy.hp = 3;
-        enemy.x = Math.random() * (WIDTH - 300) + 150;
-        enemy.y = HEIGHT - groundHeight - playerHeight;
+    const currentTime = Date.now();
+
+    // Handle enemy attack cooldown
+    if (currentTime - enemy.lastAttackTime > gameSettings.enemyAttackCooldown) {
+        enemy.attacking = Math.random() > 0.5 ? "mid" : "low";
+        enemy.lastAttackTime = currentTime;
     }
 
-    enemy.direction = player.x > enemy.x ? "right" : "left";
-    enemy.dx = player.x > enemy.x ? 2 : -2;
+    // Ensure the enemy acts as a "rock" and blocks movement
+    const overlap = detectCollision(
+        { x: player.x, y: player.y, width: player.width, height: player.height },
+        { x: enemy.x, y: enemy.y, width: enemy.width, height: enemy.height }
+    );
 
-    if (Math.random() < 0.02) {
-        enemy.attacking = Math.random() > 0.5 ? "mid" : "low";
+    if (overlap) {
+        bounceBack(player, enemy);
     }
 }
 
 function gameLoop() {
     if (!gameActive) return;
-    ctx.clearRect(0, 0, WIDTH, HEIGHT);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    drawBackground();
     applyGravity(player);
     applyGravity(enemy);
 
@@ -114,26 +153,30 @@ function gameLoop() {
     const enemyAttack = attack(enemy);
 
     // Player attack hits enemy
-    if (player.attacking && detectCollision(playerAttack, { x: enemy.x, y: enemy.y, width: playerWidth, height: playerHeight })) {
+    if (player.attacking && detectCollision(playerAttack, { x: enemy.x, y: enemy.y, width: enemy.width, height: enemy.height })) {
         enemy.hp -= 1;
         player.attacking = false;
         if (enemy.hp <= 0) {
             score += 10;
+            enemy.hp = 3;
+            enemy.x = Math.random() * (canvas.width - 300) + 150;
+            enemy.y = canvas.height - gameSettings.groundHeight - enemy.height;
         }
     }
 
     // Enemy attack hits player
-    if (enemy.attacking && detectCollision(enemyAttack, { x: player.x, y: player.y, width: playerWidth, height: playerHeight })) {
+    if (enemy.attacking && detectCollision(enemyAttack, { x: player.x, y: player.y, width: player.width, height: player.height })) {
         enemy.attacking = false;
         player.hp -= 1;
+        bounceBack(enemy, player);
         if (player.hp <= 0) {
             alert("Game Over! Final Score: " + score);
             location.reload();
         }
     }
 
-    drawRect(player.x, player.y, playerWidth, playerHeight, "blue"); // Player
-    drawRect(enemy.x, enemy.y, playerWidth, playerHeight, "red");   // Enemy
+    drawRect(player.x, player.y, player.width, player.height, "blue"); // Player
+    drawRect(enemy.x, enemy.y, enemy.width, enemy.height, "red");   // Enemy
 
     // Draw attack squares
     if (player.attacking) drawRect(playerAttack.x, playerAttack.y, playerAttack.width, playerAttack.height, "cyan");
@@ -153,8 +196,8 @@ window.addEventListener("keydown", (e) => {
     keys[e.key] = true;
 
     // Jump
-    if (e.key === "ArrowUp" && player.y === HEIGHT - groundHeight - playerHeight) {
-        player.dy = -jumpStrength;
+    if (e.key === "ArrowUp" && player.y === canvas.height - gameSettings.groundHeight - player.height) {
+        player.dy = -gameSettings.jumpStrength;
     }
 
     // Attack
@@ -180,3 +223,7 @@ function controlPlayer() {
 }
 
 setInterval(controlPlayer, 1000 / 60);
+window.addEventListener("resize", resizeCanvas);
+
+// Initialize canvas size
+resizeCanvas();
