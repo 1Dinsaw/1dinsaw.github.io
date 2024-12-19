@@ -11,8 +11,8 @@ const groundHeight = 50;
 const playerWidth = 20;
 const playerHeight = 100;
 const attackSize = 20;
-const gravity = 2;
-const jumpStrength = 30;
+const gravity = 1.5;
+const jumpStrength = 20;
 
 let player = { x: 200, y: HEIGHT - groundHeight - playerHeight, dx: 0, dy: 0, hp: 3, attacking: false, direction: "right" };
 let enemy = { x: WIDTH - 250, y: HEIGHT - groundHeight - playerHeight, dx: 0, dy: 0, hp: 3, attacking: false, direction: "left" };
@@ -90,13 +90,17 @@ function gameLoop() {
     const playerAttack = attack(player);
     const enemyAttack = attack(enemy);
 
-    if (player.attacking && detectCollision(playerAttack, enemy)) {
+    // Player attack hits enemy
+    if (player.attacking && detectCollision(playerAttack, { x: enemy.x, y: enemy.y, width: playerWidth, height: playerHeight })) {
         enemy.hp -= 1;
         player.attacking = false;
-        score += 10;
+        if (enemy.hp <= 0) {
+            score += 10;
+        }
     }
 
-    if (enemy.attacking && detectCollision(enemyAttack, player)) {
+    // Enemy attack hits player
+    if (enemy.attacking && detectCollision(enemyAttack, { x: player.x, y: player.y, width: playerWidth, height: playerHeight })) {
         enemy.attacking = false;
         player.hp -= 1;
         if (player.hp <= 0) {
@@ -105,15 +109,18 @@ function gameLoop() {
         }
     }
 
-    drawRect(player.x, player.y, playerWidth, playerHeight, "blue");
-    drawRect(enemy.x, enemy.y, playerWidth, playerHeight, "red");
+    drawRect(player.x, player.y, playerWidth, playerHeight, "blue"); // Player
+    drawRect(enemy.x, enemy.y, playerWidth, playerHeight, "red");   // Enemy
 
+    // Draw attack squares
     if (player.attacking) drawRect(playerAttack.x, playerAttack.y, playerAttack.width, playerAttack.height, "cyan");
     if (enemy.attacking) drawRect(enemyAttack.x, enemyAttack.y, enemyAttack.width, enemyAttack.height, "pink");
 
+    // Display score and HP
     ctx.fillStyle = "white";
+    ctx.font = "20px Arial";
     ctx.fillText("Score: " + score, 20, 30);
-    ctx.fillText("HP: " + player.hp, 20, 50);
+    ctx.fillText("HP: " + player.hp, 20, 60);
 
     requestAnimationFrame(gameLoop);
 }
@@ -121,10 +128,12 @@ function gameLoop() {
 window.addEventListener("keydown", (e) => {
     keys[e.key] = true;
 
+    // Jump
     if (e.key === "ArrowUp" && player.y === HEIGHT - groundHeight - playerHeight) {
         player.dy = -jumpStrength;
     }
 
+    // Attack
     if (e.key === " ") {
         player.attacking = Math.random() > 0.5 ? "mid" : "low";
     }
