@@ -53,4 +53,19 @@ function startEmulation() {
 }
 
 // Load the emulator on page load
+async function loadDolphinWasm() {
+  try {
+      const response = await fetch('dolphin.wasm');
+      const buffer = await response.arrayBuffer();
+      const wasmModule = await WebAssembly.instantiate(buffer);
+      console.log("Dolphin WebAssembly loaded successfully", wasmModule);
+      return wasmModule.instance;
+  } catch (error) {
+      console.error("Failed to load Dolphin WebAssembly:", error);
+      document.getElementById('status').textContent = "Failed to load Dolphin emulator.";
+  }
+}
+
+// Initialize Dolphin emulator on page load
+loadDolphinWasm();
 loadEmulator();
