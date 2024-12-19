@@ -140,17 +140,67 @@ function gameLoop() {
     if (!gameActive) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    // Draw the background first
     drawBackground();
+
+    // Apply gravity and movement logic
     applyGravity(player);
     applyGravity(enemy);
 
     moveCharacter(player);
     moveCharacter(enemy);
 
+    // Handle enemy logic and collision
     enemyLogic();
 
+    // Handle collisions between player and enemy
+    handleCollision(player, enemy);
+
+    // Calculate attack areas
     const playerAttack = attack(player);
     const enemyAttack = attack(enemy);
+
+    // Check if player's attack hits the enemy
+    if (player.attacking && detectCollision(playerAttack, { x: enemy.x, y: enemy.y, width: enemy.width, height: enemy.height })) {
+        enemy.hp -= 1;
+        player.attacking = false;
+        if (enemy.hp <= 0) {
+            score += 10;
+            enemy.hp = 3;
+            enemy.x = Math.random() * (canvas.width - 300) + 150;
+            enemy.y = canvas.height - gameSettings.groundHeight - enemy.height;
+        }
+    }
+
+    // Check if enemy's attack hits the player
+    if (enemy.attacking && detectCollision(enemyAttack, { x: player.x, y: player.y, width: player.width, height: player.height })) {
+        enemy.attacking = false;
+        player.hp -= 1;
+        if (player.hp <= 0) {
+            alert("Game Over! Final Score: " + score);
+            location.reload();
+        }
+    }
+
+    // Draw the player and enemy
+    drawRect(player.x, player.y, player.width, player.height, "blue");
+    drawRect(enemy.x, enemy.y, enemy.width, enemy.height, "red");
+
+    // Draw attack squares
+    if (player.attacking) drawRect(playerAttack.x, playerAttack.y, playerAttack.width, playerAttack.height, "cyan");
+    if (enemy.attacking) drawRect(enemyAttack.x, enemyAttack.y, enemyAttack.width, enemyAttack.height, "pink");
+
+    // Display score and health
+    ctx.fillStyle = "white";
+    ctx.font = "20px Arial";
+    ctx.fillText(`Score: ${score}`, 20, 30);
+    ctx.fillText(`Player HP: ${player.hp}`, 20, 60);
+    ctx.fillText(`Enemy HP: ${enemy.hp}`, 20, 90);
+
+    // Continue the game loop
+    requestAnimationFrame(gameLoop);
+}
+
 
     // Player attack hits enemy
     if (player.attacking && detectCollision(playerAttack, { x: enemy.x, y: enemy.y, width: enemy.width, height: enemy.height })) {
