@@ -3,44 +3,224 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Girad Game</title>
+    <title>Super Mario 64 + Sunshine Elements</title>
     <style>
+        /* CSS: Game Styles */
         body {
             margin: 0;
             overflow: hidden;
+            font-family: Arial, sans-serif;
         }
+
         canvas {
             display: block;
         }
-        #title-screen {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            height: 100vh;
-            background: black;
+
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
             color: white;
-        }
-        #play-button {
-            margin-top: 20px;
-            padding: 10px 20px;
-            font-size: 20px;
-            cursor: pointer;
-            background: white;
-            border: none;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
             border-radius: 5px;
-        }
-        #play-button:hover {
-            background: lightgray;
         }
     </style>
 </head>
 <body>
-    <div id="title-screen">
-        <h1>The Girad Game</h1>
-        <button id="play-button">Play</button>
+    <div id="ui">
+        <p><strong>Super Mario 64 + Sunshine Elements</strong></p>
+        <p>Use Arrow Keys to move, Space to jump, 'F' to toggle FLUDD, and reach the platforms!</p>
+        <p>Coins Collected: <span id="coins">0</span></p>
     </div>
-    <canvas id="gameCanvas"></canvas>
-    <script src="script.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r152/three.min.js"></script>
+    <script>
+        // --------------- 1. Basic Scene Setup ---------------
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        const pointLight = new THREE.PointLight(0xffffff, 1, 50);
+        pointLight.position.set(5, 10, 5);
+        scene.add(pointLight);
+
+        // --------------- 2. Ground Plane ---------------
+        const textureLoader = new THREE.TextureLoader();
+        const groundTexture = textureLoader.load('https://example.com/ground-texture.jpg');
+        groundTexture.wrapS = THREE.RepeatWrapping;
+        groundTexture.wrapT = THREE.RepeatWrapping;
+        groundTexture.repeat.set(20, 20);
+
+        const groundMaterial = new THREE.MeshStandardMaterial({ map: groundTexture });
+        const groundGeometry = new THREE.PlaneGeometry(50, 50);
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        scene.add(ground);
+
+        // --------------- 3. Mario Character Setup ---------------
+        const marioGroup = new THREE.Group();
+
+        // Mario Body
+        const marioBodyGeometry = new THREE.BoxGeometry(1, 1.5, 1);
+        const marioBodyMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+        const marioBody = new THREE.Mesh(marioBodyGeometry, marioBodyMaterial);
+
+        // Mario Cap
+        const marioCapGeometry = new THREE.BoxGeometry(1.2, 0.3, 1.2);
+        const marioCapMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+        const marioCap = new THREE.Mesh(marioCapGeometry, marioCapMaterial);
+        marioCap.position.y = 0.9;
+
+        marioGroup.add(marioBody);
+        marioGroup.add(marioCap);
+        marioGroup.position.set(0, 1, 0);
+        scene.add(marioGroup);
+
+        // FLUDD
+        const fluddGeometry = new THREE.CylinderGeometry(0.2, 0.2, 1);
+        const fluddMaterial = new THREE.MeshStandardMaterial({ color: 0x0000ff });
+        const fludd = new THREE.Mesh(fluddGeometry, fluddMaterial);
+        fludd.position.set(0, 1.5, -0.5);
+        marioGroup.add(fludd);
+        fludd.visible = false;
+
+        // --------------- 4. Collectibles: Coins ---------------
+        const coins = [];
+        const coinGeometry = new THREE.TorusGeometry(0.3, 0.1, 16, 100);
+        const coinMaterial = new THREE.MeshStandardMaterial({ color: 0xffff00 });
+
+        for (let i = 0; i < 10; i++) {
+            const coin = new THREE.Mesh(coinGeometry, coinMaterial);
+            coin.position.set(
+                (Math.random() - 0.5) * 20,
+                0.5,
+                (Math.random() - 0.5) * 20
+            );
+            coins.push(coin);
+            scene.add(coin);
+        }
+
+        let coinsCollected = 0;
+
+        // --------------- 5. Floating Platforms ---------------
+        const platformGeometry = new THREE.BoxGeometry(3, 0.2, 3);
+        const platformMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+
+        const platforms = [];
+        for (let i = 0; i < 5; i++) {
+            const platform = new THREE.Mesh(platformGeometry, platformMaterial);
+            platform.position.set(
+                (Math.random() - 0.5) * 20,
+                2 + Math.random() * 3,
+                (Math.random() - 0.5) * 20
+            );
+            platforms.push(platform);
+            scene.add(platform);
+        }
+
+        // --------------- 6. Teleporter Mechanic ---------------
+        const teleporterGeometry = new THREE.CylinderGeometry(0.5, 0.5, 1);
+        const teleporterMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+        const teleporter = new THREE.Mesh(teleporterGeometry, teleporterMaterial);
+        teleporter.position.set(10, 1, 10);
+        scene.add(teleporter);
+
+        // --------------- 7. Water Spray (FLUDD) ---------------
+        const particleGeometry = new THREE.BufferGeometry();
+        const particleCount = 100;
+        const positions = new Float32Array(particleCount * 3);
+
+        for (let i = 0; i < particleCount * 3; i++) {
+            positions[i] = (Math.random() - 0.5) * 2;
+        }
+
+        particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+        const particleMaterial = new THREE.PointsMaterial({
+            color: 0x0000ff,
+            size: 0.1,
+            transparent: true,
+            opacity: 0.7,
+        });
+
+        const waterSpray = new THREE.Points(particleGeometry, particleMaterial);
+        waterSpray.visible = false;
+        scene.add(waterSpray);
+
+        // --------------- 8. Movement Variables ---------------
+        const speed = 0.2;
+        const jumpHeight = 0.5;
+        let velocity = { x: 0, y: 0, z: 0 };
+        let onGround = true;
+        const keys = {};
+
+        document.addEventListener("keydown", (e) => {
+            keys[e.key] = true;
+            if (e.key === " " && onGround) velocity.y = jumpHeight;
+            if (e.key === "f") {
+                fludd.visible = !fludd.visible;
+            }
+        });
+
+        document.addEventListener("keyup", (e) => {
+            keys[e.key] = false;
+        });
+
+        // --------------- 9. Game Loop and Animations ---------------
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Mario Movement
+            if (keys["ArrowUp"]) marioGroup.position.z -= speed;
+            if (keys["ArrowDown"]) marioGroup.position.z += speed;
+            if (keys["ArrowLeft"]) marioGroup.position.x -= speed;
+            if (keys["ArrowRight"]) marioGroup.position.x += speed;
+
+            // Gravity
+            velocity.y -= 0.02;
+            marioGroup.position.y += velocity.y;
+
+            if (marioGroup.position.y <= 1) {
+                velocity.y = 0;
+                marioGroup.position.y = 1;
+                onGround = true;
+            } else {
+                onGround = false;
+            }
+
+            // Collision with Platforms
+            platforms.forEach((platform) => {
+                const dist = marioGroup.position.distanceTo(platform.position);
+                if (dist < 1.5 && marioGroup.position.y > platform.position.y) {
+                    marioGroup.position.y = platform.position.y + 1;
+                    velocity.y = 0;
+                    onGround = true;
+                }
+            });
+
+            // Teleporter Check
+            if (marioGroup.position.distanceTo(teleporter.position) < 1) {
+                marioGroup.position.set(0, 10, 0);
+            }
+
+            // Water Spray
+            if (fludd.visible && keys[" "]) {
+                waterSpray.visible = true;
+                waterSpray.position.set(marioGroup.position.x, marioGroup.position.y + 1, marioGroup.position.z);
+            } else {
+                waterSpray.visible = false;
+            }
+
+            // Render Scene
+            renderer.render(scene, camera);
+        }
+
+        animate();
+    </script>
 </body>
-</html>
+<html>
