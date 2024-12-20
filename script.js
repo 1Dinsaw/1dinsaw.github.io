@@ -9,8 +9,9 @@ function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     gameSettings.groundHeight = canvas.height * 0.1;
-    repositionCharacters();
+    if (!gameActive) repositionCharacters();
 }
+
 
 function repositionCharacters() {
     player.x = canvas.width * 0.2;
@@ -85,7 +86,9 @@ function applyGravity(character) {
         character.dy = 0;
         character.y = canvas.height - gameSettings.groundHeight - character.height;
     }
+    character.y += character.dy; // Apply the gravity effect
 }
+
 
 function moveCharacter(character) {
     character.x += character.dx;
@@ -111,13 +114,14 @@ function detectCollision(rect1, rect2) {
 
 function bounceBack(character1, character2) {
     if (character1.x < character2.x) {
-        character1.x -= gameSettings.bounceDistance;
-        character2.x += gameSettings.bounceDistance;
+        character1.x = Math.max(0, character1.x - gameSettings.bounceDistance);
+        character2.x = Math.min(canvas.width - character2.width, character2.x + gameSettings.bounceDistance);
     } else {
-        character1.x += gameSettings.bounceDistance;
-        character2.x -= gameSettings.bounceDistance;
+        character1.x = Math.min(canvas.width - character1.width, character1.x + gameSettings.bounceDistance);
+        character2.x = Math.max(0, character2.x - gameSettings.bounceDistance);
     }
 }
+
 
 function handleCollision(character1, character2) {
     if (
@@ -135,13 +139,13 @@ function handleCollision(character1, character2) {
 function enemyLogic() {
     const currentTime = Date.now();
 
-    // Enemy attack cooldown
-    if (currentTime - enemy.lastAttackTime > gameSettings.enemyAttackCooldown) {
-        enemy.attacking = Math.random() > 0.5 ? "mid" : "low";
+    if (!enemy.attacking && currentTime - enemy.lastAttackTime > gameSettings.enemyAttackCooldown) {
+        enemy.attacking = true;
         enemy.lastAttackTime = currentTime;
+
+        setTimeout(() => (enemy.attacking = false), 500); // 500ms attack duration
     }
 
-    // Follow player
     if (player.x > enemy.x) {
         enemy.dx = 2;
         enemy.direction = "right";
@@ -152,6 +156,7 @@ function enemyLogic() {
         enemy.dx = 0;
     }
 }
+
 
 function gameLoop() {
     if (!gameActive) return;
@@ -216,9 +221,11 @@ window.addEventListener("keydown", (e) => {
         player.dy = -gameSettings.jumpStrength;
     }
 
-    if (e.key === " ") {
+    if (e.key === " " && !player.attacking) {
         player.attacking = Math.random() > 0.5 ? "mid" : "low";
+        setTimeout(() => (player.attacking = false), 500); // Example: 500ms cooldown
     }
+    
 });
 
 window.addEventListener("keyup", (e) => {
@@ -230,12 +237,36 @@ function controlPlayer() {
     if (keys["ArrowLeft"]) {
         player.dx = -5;
         player.direction = "left";
-    }
-    if (keys["ArrowRight"]) {
+    } else if (keys["ArrowRight"]) {
         player.dx = 5;
         player.direction = "right";
+    } else {
+        player.dx = 0;
     }
 }
+
+function gameLoop() {
+    if (!gameActive) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    controlPlayer(); // Add player control here
+    drawBackground();
+    applyGravity(player);
+    applyGravity(enemy);
+
+    moveCharacter(player);
+    moveCharacter(enemy);
+
+    enemyLogic();
+    handleCollision(player, enemy);
+
+    const playerAttack = attack(player);
+    const enemyAttack = attack(enemy);
+
+    // (Other logic for attacks and rendering remains the same)
+    requestAnimationFrame(gameLoop);
+}
+
 
 setInterval(controlPlayer, 1000 / 60);
 window.addEventListener("resize", resizeCanvas);
